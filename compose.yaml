@@ -1,0 +1,49 @@
+name: review-deck
+services:
+  review-deck:
+    image: review-deck:local
+    build: .
+    user: "${REVIEW_DECK_UID:-10001}:${REVIEW_DECK_GID:-10001}"
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 2g
+    cpus: 2
+    stop_grace_period: 30s
+    ports:
+      - "${REVIEW_DECK_BIND_IP:-127.0.0.1}:${REVIEW_DECK_PORT:-8765}:8765"
+    environment:
+      REVIEW_DECK_ON_PREM: "1"
+      REVIEW_DECK_HOST: 0.0.0.0
+      REVIEW_DECK_PORT: "8765"
+      REVIEW_DECK_LIBRARY: /library
+      REVIEW_DECK_DATA_DIR: /data
+      REVIEW_DECK_PASSWORD_FILE: /run/secrets/review_password
+      REVIEW_DECK_USER: "${REVIEW_DECK_USER:-review}"
+      REVIEW_DECK_PUBLIC_ORIGIN: "${REVIEW_DECK_PUBLIC_ORIGIN:-}"
+    secrets: [review_password]
+    volumes:
+      - type: bind
+        source: ${REVIEW_DECK_LIBRARY:?Set REVIEW_DECK_LIBRARY in .env}
+        target: /library
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${REVIEW_DECK_DATA_DIR:?Set REVIEW_DECK_DATA_DIR in .env}
+        target: /data
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /tmp:size=268435456,mode=1777
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+secrets:
+  review_password:
+    file: ./secrets/review-password.txt

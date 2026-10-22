@@ -1,0 +1,5 @@
+# Caddy running on the Docker host. Point internal DNS here; trust your internal CA.
+review.example.internal {
+    tls internal
+    reverse_proxy 127.0.0.1:8765
+}
