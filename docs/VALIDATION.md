@@ -14,9 +14,11 @@ The scenarios cover authentication for pages/API/media, path and symlink confine
 
 ## English interface and README screenshots
 
-Four screenshots were captured from the running application using a separate temporary demo library with [LISA — SaWaDiKa](https://www.youtube.com/watch?v=FyS5dAywkEo) and [ILLIT — It’s Me](https://www.youtube.com/watch?v=bMhDJ0S0OBA). Participants, tags, statuses, and annotations are illustrative. The videos and temporary library data are not included in the repository.
+Six screenshots were captured from the running application using a separate temporary demo library with [LISA — SaWaDiKa](https://www.youtube.com/watch?v=FyS5dAywkEo) and [ILLIT — It’s Me](https://www.youtube.com/watch?v=bMhDJ0S0OBA). Participants, tags, statuses, and annotations are illustrative. The videos and temporary library data are not included in the repository.
 
 The browser check verified all thumbnail images loaded, both source videos played and sought to the requested frames, the annotation/review timelines switched correctly, and the participant panel and keyboard help opened. All demo labels and annotations were checked for English text. Player controls fit the captured viewport; JavaScript and network error checks passed. The apostrophe in the second source filename is preserved and its preview loads correctly after URL escaping was fixed.
+
+Drawing capture used real mouse strokes in the application: a frame outline, an arrow, and a detail circle in three colors. All five strokes were saved through the normal UI. The annotated PNG was retrieved successfully, and the strokes rendered again after a page reload at the original timestamp. Screenshots show both drawing mode and the saved result; JavaScript and network error checks passed.
 
 The screenshots were visually inspected, and every image link in README was checked against an existing PNG file. The former illustration was replaced.
 

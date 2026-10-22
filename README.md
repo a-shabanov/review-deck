@@ -30,6 +30,17 @@ Switch to the independent review timeline to flag framing, sound, timing, or con
 
 ![Review timeline with framing, audio, and editing notes](docs/screenshots/review.png)
 
+### Draw directly on a frame
+
+Press **P** to pause and draw over the current frame. Use **1–5** to switch colors and **[ / ]** to adjust stroke width. Highlight framing, movement, or a detail with freehand lines.
+
+![Drawing mode with a frame outline, an arrow, and a detail highlight](docs/screenshots/drawing-tools.png)
+
+Press **Enter** to save the annotated PNG and its source timestamp. Saved strokes reappear when you return to the frame, and the **drawings** row keeps a marker on the timeline.
+
+![Saved frame drawing restored after a page reload, with a timeline marker](docs/screenshots/drawing-saved.png)
+
+
 ## Quick start
 
 Requires Python 3.9+ and `ffmpeg` / `ffprobe` on your PATH.
