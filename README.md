@@ -30,8 +30,6 @@ Switch to the independent review timeline to flag framing, sound, timing, or con
 
 ![Review timeline with framing, audio, and editing notes](docs/screenshots/review.png)
 
-Screenshots show a temporary demo library using [LISA — SaWaDiKa](https://www.youtube.com/watch?v=FyS5dAywkEo) and [ILLIT — It’s Me](https://www.youtube.com/watch?v=bMhDJ0S0OBA). All interface labels and demo annotations are in English. Participants, tags, statuses, and annotations are illustrative. The videos themselves are not included in this repository.
-
 ## Quick start
 
 Requires Python 3.9+ and `ffmpeg` / `ffprobe` on your PATH.
