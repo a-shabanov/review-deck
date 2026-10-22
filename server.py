@@ -9,8 +9,8 @@ Results live in --data-dir, or in <library>/_review/ in local mode:
   drawings/<relative path>/    PNG snapshots of annotated still frames
   thumbs/, sprites/, proxy/    caches (safe to delete)
   config.json                  key -> track label / colour
-  catalog.json                 actresses and tags, and which videos they belong to (many-to-many)
-  avatars/                     actress avatar crops (cache)
+  catalog.json                 participants and tags, and which videos they belong to (many-to-many)
+  avatars/                     participant avatar crops (cache)
   all.json                     everything merged (written by /api/export and on every save)
 """
 import json, os, sys, subprocess, threading, time, mimetypes, urllib.parse, re, base64, hashlib
@@ -33,14 +33,14 @@ write_lock = threading.RLock()
 log = logging.getLogger('review-deck')
 VIDEO_EXT = {'.mp4', '.m4v', '.mov', '.mkv', '.webm', '.avi', '.wmv', '.ts', '.flv', '.mpg', '.mpeg'}
 DEFAULT_TRACKS = [
-    {'key': 'F', 'label': 'action', 'color': '#ff4d6d'},
-    {'key': 'C', 'label': 'close-up', 'color': '#4dabff'},
-    {'key': 'V', 'label': 'face', 'color': '#ffd23f'},
+    {'key': 'F', 'label': 'Сцена', 'color': '#ff4d6d'},
+    {'key': 'C', 'label': 'Крупный план', 'color': '#4dabff'},
+    {'key': 'V', 'label': 'Участник', 'color': '#ffd23f'},
     {'key': 'B', 'label': 'брак', 'color': '#9b5de5'},
-    {'key': 'G', 'label': 'G', 'color': '#3ddc97'},
-    {'key': 'T', 'label': 'T', 'color': '#ff9f1c'},
-    {'key': 'Q', 'label': 'Q', 'color': '#f15bb5'},
-    {'key': 'E', 'label': 'E', 'color': '#00f5d4'},
+    {'key': 'G', 'label': 'Движение', 'color': '#3ddc97'},
+    {'key': 'T', 'label': 'Переход', 'color': '#ff9f1c'},
+    {'key': 'Q', 'label': 'Звук', 'color': '#f15bb5'},
+    {'key': 'E', 'label': 'Заметка', 'color': '#00f5d4'},
 ]
 
 state = {'root': None}
@@ -206,7 +206,7 @@ REVIEW_TRACKS = [   # the 'review' timeline: notes on a finished cut, left hand 
     {'key': 'W', 'label': 'кадр / позиционирование', 'color': '#ff9f40', 'group': 'правки'},
     {'key': 'E', 'label': 'подписи / текст', 'color': '#ffd84d', 'group': 'правки'},
     {'key': 'R', 'label': 'звук', 'color': '#4dd2ff', 'group': 'правки'},
-    {'key': 'A', 'label': 'урон / логика', 'color': '#b36bff', 'group': 'правки'},
+    {'key': 'A', 'label': 'содержание / логика', 'color': '#b36bff', 'group': 'правки'},
     {'key': 'S', 'label': 'тайминг / монтаж', 'color': '#4d7dff', 'group': 'правки'},
     {'key': 'D', 'label': 'хорошо — оставить', 'color': '#4dff88', 'group': 'оценка'},
     {'key': 'F', 'label': 'другое', 'color': '#bbbbbb', 'group': 'оценка'}]
@@ -216,7 +216,7 @@ def get_config(tl=''):
     c.setdefault('tracks', REVIEW_TRACKS if tl == 'review' else DEFAULT_TRACKS)
     return c
 
-# ------------------------------------------------------------------ catalog: actresses + tags <-> videos, many-to-many
+# ------------------------------------------------------------------ catalog: participants + tags <-> videos, many-to-many
 # catalog.json = {people: {id: {name, aliases[], avatar{rel,t,x,y,w,h}|null, note}},
 #                 tags:   {id: {name, group}},
 #                 videos: {rel: {people: [id], tags: [id]}}}

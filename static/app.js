@@ -28,15 +28,15 @@ const typing = () => ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeEle
 
 // ============================================================================ LIBRARY
 let LIB = null, CFG = { tracks: [] }, CAT = { people: {}, tags: {}, videos: {} };
-// timelines: independent sets of marks per video ('' = NSFW marking, 'review' = notes on a finished cut), each with its own tracks
-const TLS = { '': 'Разметка NSFW', review: 'Правки' };
+// timelines: independent sets of marks per video ('' = source annotation, 'review' = notes on a finished cut), each with its own tracks
+const TLS = { '': 'Разметка', review: 'Правки' };
 let TLN = ''; try { TLN = localStorage.getItem('rd.tl') || ''; if (!(TLN in TLS)) TLN = ''; } catch (e) {}
 const CFGS = {};
 const TLQ = () => TLN ? `&tl=${TLN}` : '';
 function curCfg() { return TLN ? (CFGS[TLN] || { tracks: [] }) : CFG; }
 let FILTER = 'all', FOLDER = null, SEARCH = '', PSEARCH = '', GROUP = 'folder', VIEW = 'lib';
-let FP = new Set(), FT = new Set(), FNONE = '';          // actress / tag filters (AND), FNONE: 'people' | 'tags' = only videos without any
-let FLAT = [], SEL = 0, ANCHOR = 0, MSEL = new Set();    // FLAT: [{v, el}] — a video sits in several sections when grouped by actress
+let FP = new Set(), FT = new Set(), FNONE = '';          // participant / tag filters (AND), FNONE: 'people' | 'tags' = only videos without any
+let FLAT = [], SEL = 0, ANCHOR = 0, MSEL = new Set();    // FLAT: [{v, el}] — a video sits in several sections when grouped by participant
 const byRel = {};
 try { GROUP = localStorage.getItem('rd.group') || 'folder'; } catch (e) {}
 
@@ -93,7 +93,7 @@ function passes(v) {
   return v.status === FILTER;
 }
 
-// ---------------------------------------------------------------- sidebar: folders, actresses, tags
+// ---------------------------------------------------------------- sidebar: folders, participants, tags
 function sideItem(box, html, n, on, click) {
   const d = document.createElement('div'); d.className = 'it' + (on ? ' on' : '');
   d.innerHTML = `${html}<small>${n}</small>`; d.onclick = click; box.appendChild(d); return d;
@@ -119,7 +119,7 @@ function renderSide() {
   $('#peopleN').textContent = Object.keys(CAT.people).length || '';
   for (const id of ids) sideItem(pb, `${avatarHtml(id)}<span>${esc(pname(id))}</span>`, pc[id], FP.has(id), e => toggleFilter(FP, id, e));
   const nop = vids.filter(v => !vp(v.rel).length).length;
-  if (nop) sideItem(pb, '<span class="av">?</span><span>Без актрисы</span>', nop, FNONE === 'people', () => { FP.clear(); FNONE = FNONE === 'people' ? '' : 'people'; renderSide(); renderGrid(); });
+  if (nop) sideItem(pb, '<span class="av">?</span><span>Без участников</span>', nop, FNONE === 'people', () => { FP.clear(); FNONE = FNONE === 'people' ? '' : 'people'; renderSide(); renderGrid(); });
   const tc = useCount('tags'), tb = $('#tags'); tb.innerHTML = '';
   const groups = {};
   for (const id in CAT.tags) (groups[CAT.tags[id].group || ''] ||= []).push(id);
@@ -136,12 +136,12 @@ function renderActive() {
   const add = (label, off) => { const c = document.createElement('span'); c.className = 'chip'; c.textContent = label + '  ✕'; c.onclick = off; box.appendChild(c); };
   for (const id of FP) add(pname(id), () => { FP.delete(id); renderSide(); renderGrid(); });
   for (const id of FT) add('#' + tname(id), () => { FT.delete(id); renderSide(); renderGrid(); });
-  if (FNONE) add(FNONE === 'people' ? 'без актрисы' : 'без тегов', () => { FNONE = ''; renderSide(); renderGrid(); });
-  if (MSEL.size) add(`выбрано ${MSEL.size} — A актрисы · T теги · Esc снять`, () => { MSEL.clear(); paintSel(); renderActive(); });
+  if (FNONE) add(FNONE === 'people' ? 'без участников' : 'без тегов', () => { FNONE = ''; renderSide(); renderGrid(); });
+  if (MSEL.size) add(`выбрано ${MSEL.size} — A участники · T теги · Esc снять`, () => { MSEL.clear(); paintSel(); renderActive(); });
   box.classList.toggle('hidden', !box.children.length);
 }
 
-// ---------------------------------------------------------------- grid, grouped by folder / actress / tag
+// ---------------------------------------------------------------- grid, grouped by folder / participant / tag
 function sections() {
   if (GROUP === 'folder') return LIB.folders.map(f => ({ title: esc(f.folder === '.' ? '(корень)' : f.folder), vids: f.videos.filter(passes) }));
   const vids = allVideos().filter(passes), kind = GROUP === 'person' ? 'people' : 'tags', get = kind === 'people' ? vp : vt;
@@ -149,7 +149,7 @@ function sections() {
     const t = [...FP].map(pname).concat([...FT].map(id => '#' + tname(id))).join(' + ') || 'Все видео';
     return [{ title: esc(t), vids: vids.slice().sort((a, b) => a.name.localeCompare(b.name)) }];
   }
-  const only = kind === 'people' ? FP : FT;           // filtered by an actress: her group only, co-stars stay as chips
+  const only = kind === 'people' ? FP : FT;           // filtered by a participant: their group only, other participants stay as chips
   const out = Object.keys(CAT[kind]).filter(id => !only.size || only.has(id)).map(id => ({ id, vids: vids.filter(v => get(v.rel).includes(id)) })).filter(s => s.vids.length);
   if (kind === 'people') out.sort((a, b) => b.vids.length - a.vids.length || pname(a.id).localeCompare(pname(b.id)));
   else out.sort((a, b) => (CAT.tags[a.id].group || '~').localeCompare(CAT.tags[b.id].group || '~') || tname(a.id).localeCompare(tname(b.id)));
@@ -158,7 +158,7 @@ function sections() {
     else { const g = CAT.tags[s.id].group; s.title = `${g ? esc(g) + ' · ' : ''}#${esc(tname(s.id))}`; }
   }
   const none = vids.filter(v => !get(v.rel).length);
-  if (none.length && !only.size) out.push({ title: kind === 'people' ? 'Без актрисы' : 'Без тегов', vids: none });
+  if (none.length && !only.size) out.push({ title: kind === 'people' ? 'Без участников' : 'Без тегов', vids: none });
   return out;
 }
 
@@ -296,7 +296,7 @@ function setGroup(g) {
   if (LIB) { $('#grid').scrollTop = 0; renderGrid(); }
 }
 
-// ---------------------------------------------------------------- tagger: assign actresses / tags to the selected videos
+// ---------------------------------------------------------------- tagger: assign participants / tags to the selected videos
 const TG = { kind: 'people', rels: [], items: [], si: 0 };
 async function catOps(ops) {
   const r = await api.post('/api/catalog', { ops });
@@ -317,7 +317,7 @@ function renderTagger() {
   const kind = TG.kind, n = TG.rels.length, get = kind === 'people' ? vp : vt, name = kind === 'people' ? pname : tname;
   document.querySelectorAll('#tagger .tabs button').forEach(b => b.classList.toggle('on', b.dataset.k === kind));
   $('#tgTarget').textContent = n === 1 ? (byRel[TG.rels[0]]?.name || TG.rels[0]) : `${n} видео`;
-  $('#tgInput').placeholder = kind === 'people' ? 'имя актрисы…' : 'тег… (можно «группа: тег»)';
+  $('#tgInput').placeholder = kind === 'people' ? 'имя участника…' : 'тег… (можно «группа: тег»)';
   const cnt = {}; for (const r of TG.rels) for (const id of get(r)) cnt[id] = (cnt[id] || 0) + 1;
   const box = $('#tgChips'); box.innerHTML = '';
   for (const id of Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])) {
@@ -395,7 +395,7 @@ function renderCatalog() {
   const q = norm($('#catSearch').value), uc = useCount(CK), name = CK === 'people' ? pname : tname;
   const ids = Object.keys(CAT[CK]).filter(id => !q || norm(name(id) + ' ' + (CAT[CK][id].aliases || []).join(' ') + ' ' + (CAT[CK][id].group || '')).includes(q))
     .sort((a, b) => CK === 'tags' ? (CAT.tags[a].group || '~').localeCompare(CAT.tags[b].group || '~') || name(a).localeCompare(name(b)) : name(a).localeCompare(name(b)));
-  const box = $('#catRows'); box.innerHTML = ids.length ? '' : '<p class="muted">Пусто. Актрисы и теги появляются, когда их назначают: A / T в медиатеке.</p>';
+  const box = $('#catRows'); box.innerHTML = ids.length ? '' : '<p class="muted">Пусто. Участники и теги появляются, когда их назначают: A / T в медиатеке.</p>';
   const others = Object.keys(CAT[CK]).sort((a, b) => name(a).localeCompare(name(b)));
   for (const id of ids) {
     const e = CAT[CK][id], r = document.createElement('div'); r.className = 'row';
@@ -929,7 +929,7 @@ function backToLib() {
 }
 function nextVideo(d) {
   let i = FLAT.findIndex(x => x.v.rel === P.rel), j = i + d;
-  while (j >= 0 && j < FLAT.length && FLAT[j].v.rel === P.rel) j += d;      // grouped by actress, the same video may repeat
+  while (j >= 0 && j < FLAT.length && FLAT[j].v.rel === P.rel) j += d;      // grouped by participant, the same video may repeat
   if (i < 0 || j < 0 || j >= FLAT.length) return toast('это крайнее видео');
   clearTimeout(saveT); save(); SEL = j; openPlayer(FLAT[j].v.rel);
 }

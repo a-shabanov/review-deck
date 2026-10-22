@@ -12,7 +12,7 @@ const g = await p.evaluate(() => { const r = tl.getBoundingClientRect(), [a, b] 
 const X = t => g.left + (t - g.a) / (g.b - g.a) * g.w, Y = K => g.ry + g.rows.indexOf(K) * g.rh + g.rh / 2;
 const cntF = () => p.evaluate(() => P.marks.tracks.F.spans.length);
 const f0 = await cntF();
-// rubber band over F and vaginal rows, 505..512 s
+// rubber band over F and scene rows, 505..512 s
 await p.keyboard.down('Shift'); await p.mouse.move(X(505), Y('F')); await p.mouse.down(); await p.mouse.move(X(508), Y("'")); await p.mouse.move(X(512), Y("'")); await p.mouse.up(); await p.keyboard.up('Shift'); await sleep(200);
 const n1 = await p.evaluate(() => P.msel.size); await p.screenshot({ path: out });
 console.log('band selected', n1);

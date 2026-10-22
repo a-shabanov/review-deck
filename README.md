@@ -1,95 +1,152 @@
-# review-deck
+# Review Deck
 
-Local tool for reviewing video sources: library with previews, defect flags, and real-time marking of time spans with keys.
-The result is plain JSON that an agent can read.
+Review video sources, mark useful moments, and leave precise edit notes in your browser. Review Deck combines a searchable media library, keyboard-driven annotation, frame drawings, and plain JSON exports for editors and automation.
 
+Run it locally or host a shared instance on your own infrastructure. Your videos and review data stay on your storage; the app has no cloud API, telemetry, or CDN dependencies.
+
+## Interface
+
+### Browse and organise sources
+
+Preview clips, filter by participant or tag, group videos, and mark their review status.
+
+![Media library with video previews, participants, tags, and review status](docs/screenshots/library.png)
+
+### Mark moments on the timeline
+
+Hold a track key to record a time span. Add captions, move several marks together, and step through frames without leaving the player.
+
+![Source player with named annotation tracks and captioned time spans](docs/screenshots/timeline.png)
+
+### Leave edit notes
+
+Switch to the independent review timeline to flag framing, sound, timing, or content changes.
+
+![Review timeline with framing, audio, and editing notes](docs/screenshots/review.png)
+
+Screenshots show a temporary demo library using [LISA — SaWaDiKa (Official Music Video)](https://www.youtube.com/watch?v=FyS5dAywkEo). Participants, tags, statuses, and annotations are illustrative. The video itself is not included in this repository.
+
+## Quick start
+
+Requires Python 3.9+ and `ffmpeg` / `ffprobe` on your PATH.
+
+```sh
+python3 server.py /path/to/library
+# Open http://127.0.0.1:8765
 ```
-python3 ~/Projects/review-deck/server.py [/path/to/library]     # then open http://127.0.0.1:8765
-```
+
+Local mode needs no third-party Python packages. You can change the library folder in the app. Subfolders become sections; names starting with `_` or `.` are skipped.
 
 ## On-premises deployment
 
-Run one shared instance on your own server with Docker Compose, password authentication,
-read-only source media and a separate persistent data directory. See
-[the deployment, HTTPS, migration and backup guide](docs/ON_PREMISES.md).
-There are no cloud services or CDN dependencies at runtime. Network mode uses Waitress;
-the original localhost workflow below remains available without Python dependencies.
+Host one shared instance with Docker Compose, password authentication, a read-only media mount, and a separate persistent data directory. Network mode uses Waitress.
+
+Follow the [deployment guide](docs/ON_PREMISES.md) for setup, HTTPS, migration, backups, and offline installation:
 
 ```sh
 cp .env.example .env
-# Set library/data paths and create secrets/review-password.txt as described in the guide.
+# Set the library/data paths and create the password file as described in the guide.
 docker compose up -d --build
 ```
 
-The library folder can also be changed in the app (field at the top). Sub-folders become sections.
-Folders starting with `_` or `.` are skipped.
+The server mode fixes the library path; users cannot change it from the browser. The current model is one shared account and one server instance for a small trusted team. Concurrent edits to the same video use the last save.
 
-## Where the results go
+## Review data
 
-`<library>/_review/`:
-- `marks/<relative path>.json` — one file per video
-- `all.json` — every video merged; rewritten on every save and by «Экспорт JSON»
-- `drawings/<relative path>/<seconds>.png` — annotated still frames (frame + drawing)
-- `config.json` — key → track label / colour
-- `catalog.json` — actresses and tags and which videos they are on (many-to-many); also copied into `all.json`
-- `avatars/` — actress avatar crops (cache)
-- `thumbs/`, `sprites/`, `proxy/`, `meta.json` — caches, safe to delete
+Local mode stores results in `<library>/_review/`. Server mode stores the same contents in its configured data directory.
 
-Per-video JSON:
+| File or directory | Contents |
+| --- | --- |
+| `marks/<relative path>.json` | Main annotation timeline for each video |
+| `marks@review/<relative path>.json` | Independent edit notes |
+| `all.json` | Merged export of the main timeline and catalog |
+| `drawings/<relative path>/<seconds>.png` | Annotated still frames |
+| `config.json`, `config@review.json` | Track labels, colours, and hotkeys |
+| `catalog.json` | Participants, tags, and their video links |
+| `ids.json` | Optional stable short IDs for the library |
+| `avatars/`, `thumbs/`, `sprites/`, `proxy/`, `meta.json` | Rebuildable caches |
+
+Back up the entire data directory, including review timelines and drawings; `all.json` alone is not a full backup.
+
+### Video annotations
+
 ```json
 {
-  "file": "Kazumi/scene.mp4", "path": "/abs/path/scene.mp4",
-  "status": "unreviewed | ok | defect", "note": "",
-  "duration": 930.7, "fps": 30.0, "w": 1920, "h": 1080,
-  "tracks": { "F": { "label": "action", "color": "#ff4d6d", "spans": [[12.4, 18.9], [40.0, 40.0]] } },
-  "drawings": [ { "t": 4.96, "png": "/abs/.../00004.960.png", "strokes": [ { "c": "#ff3b30", "w": 6, "pts": [[0.43, 0.45]] } ] } ],
-  "updated": "2026-10-17T15:40:00"
+  "file": "Music video/source.mp4",
+  "path": "/library/Music video/source.mp4",
+  "status": "ok",
+  "note": "Opening sequence selected",
+  "duration": 180.0,
+  "fps": 30.0,
+  "w": 1920,
+  "h": 1080,
+  "tracks": {
+    "F": {
+      "label": "Scene",
+      "color": "#ff4d6d",
+      "spans": [[12.4, 18.9, "Opening shot"], [40.0, 40.0]]
+    }
+  },
+  "drawings": [],
+  "updated": "2026-10-23T00:00:00"
 }
 ```
-Spans are seconds in the source file. `[t, t]` is a point (a quick tap). Stroke points are normalised 0..1 of the frame.
 
-Catalog (`catalog.json`):
+Spans are seconds in the source video. `[t, t]` is a point; the optional third value is a caption. Status is `unreviewed`, `ok`, or `defect`. Drawing strokes use normalised frame coordinates from 0 to 1.
+
+### Participants and tags
+
 ```json
 {
-  "people": { "p_kazumi": { "name": "Kazumi", "aliases": ["Kazumi Squirts"], "note": "",
-                            "avatar": { "rel": "scene.mp4", "t": 200.0, "x": 0.3, "y": 0.1, "w": 0.4, "h": 0.4 } } },
-  "tags":   { "t_dp": { "name": "DP", "group": "сцена" } },
-  "videos": { "scene.mp4": { "people": ["p_kazumi"], "tags": ["t_dp"] } }
+  "people": {
+    "p_speaker": { "name": "Alex Morgan", "aliases": ["Alex"], "note": "Presenter", "avatar": null }
+  },
+  "tags": {
+    "t_interview": { "name": "Interview", "group": "Format" }
+  },
+  "videos": {
+    "interview.mp4": { "people": ["p_speaker"], "tags": ["t_interview"] }
+  }
 }
 ```
-Ids never change, so renaming keeps every link. Videos are keyed by their path relative to the library: files stay where they are.
-API: `POST /api/catalog {"ops": [...]}` with `assign` / `unassign` (`kind`, `id` or `name`, `rels`), `update` (`fields`: name,
-aliases, group, note, avatar), `merge` (`id` → `into`; the old name becomes an alias), `delete`. A new name in `assign` creates the entry;
-`"студия: Blacked"` creates a tag in group «студия».
 
-Short ids: if `_review/ids.json` (`{"file.mp4": "s01"}`) exists, each card shows its id as a badge, the player title starts
-with it, and the search box finds a video by it. The asian project writes it with `_story/tools/ids_to_review.py`.
+IDs remain stable when names change. Videos are keyed by their path relative to the library; source files stay in place.
 
-## Keys
+`POST /api/catalog {"ops": [...]}` supports `assign`, `unassign`, `update`, `merge`, and `delete`. Assignment accepts an existing `id` or a new `name`; `"project: Music video"` creates a tag in the `project` group. Updates can change `name`, `aliases`, `group`, `note`, or `avatar`. Merging preserves links and adds the old name as an alias.
 
-Library: arrows select (Shift extends) · ⌘/Shift-click select several · ⌘A all · Space quick preview (← → seek, ↑ ↓ speed) ·
-A actresses · T tags (for all selected) · G group by folders / actresses / tags / none (one flat list) · X defect · O ok · U clear · Enter open · hover = scrub.
-Sidebar: click an actress or tag to filter, ⌘-click to combine (AND). A video with two actresses shows up in both groups.
-«Справочник»: rename, aliases, tag groups, merge duplicates, delete.
+Optional `ids.json`, such as `{"source.mp4": "s01"}`, adds short IDs to cards, player titles, and search results.
 
-Track keys are letters plus `;` `'` `/` and the backquote key (matched by physical key, so they work on the Russian layout too: ж э . ё).
-A track's id (its key in the marks files) and the key that marks it can differ: `hot` in `config.json` is a letter, a digit,
-a punctuation key or `alt+X` (avoid the Option layer for tracks: a track key is held while Space is pressed, and ⌥Space opens Spotlight). Settings show both: code, then key. Changing `hot` never touches
-existing marks.
-Player: Shift-drag on the timeline selects marks with a rubber band, Cmd-click adds/removes one, a click on a track's name
-selects its marks in view (Shift: whole file), Cmd+A all marks in view; Del deletes the selection (one undo step),
-dragging a selected mark moves the whole selection, Alt+Shift+arrows nudge it, Esc clears it.
-Player: N on a selected mark gives it a caption (stored as a third element: `[start, end, "text"]`); captions show on the
-timeline and over the video while the mark is under the playhead.
-Player: I opens actresses/tags of the current video; 📷 next to an actress takes her avatar from the current frame
-(zoom in on the face first — the visible part of the frame is used).
+## Keyboard controls
 
-Player: see `?` in the app. Hold a track key to record a span; Shift+key latches start/end.
-Left hand (right one on the mouse): Space play/pause · Tab back 2 s (Shift 10 s) · ` forward 2 s (Shift 10 s) ·
-⌥3 / ⌥4 slower / faster, ⌥5 = 1× · ⌥Z / ⌥C frame step · ⌥X delete selected marks · ⌥R reverse · ⌥Tab / ⌥⇧Tab next / previous video.
-Right hand, as before: J / K / L shuttle (reverse / stop / forward, repeat = faster) · ↑ ↓ speed steps · 6–9 speed presets, 0 = 1× ·
-← → 2 s (Shift 10 s, ⌘ 60 s, ⌥ one frame) · , . frame step · PgUp/PgDn previous/next mark ·
-= - \ zoom · wheel zoom to cursor, drag to pan · P draw on the still frame (Enter saves) · Shift+P proxy · ⌘Z undo · Esc back.
+| Context | Controls |
+| --- | --- |
+| Library | Arrows to select; Shift or ⌘-click for several; ⌘A for all; Space for quick preview; Enter to open |
+| Organisation | A for participants; T for tags; G for grouping; X for defect; O for OK; U to clear status |
+| Playback | Space to play/pause; J/K/L to shuttle; arrows to seek; Shift for larger steps; comma/period for frames |
+| Annotation | Hold a track key to mark a span; Shift+key to latch start/end; N to caption a selected mark |
+| Selection | Shift-drag to select a region; ⌘-click to toggle; Del to delete; ⌘Z to undo |
+| Timeline | Wheel to zoom around the pointer; drag to pan; `=` / `-` / `\` for zoom controls |
+| Drawing | P to draw on a still frame; Enter to save |
+| Review | I for the current video's participants/tags; use the timeline button to switch between annotations and edit notes |
 
-Reverse playback seeks frame by frame; on long-GOP files it is choppy — Shift+P builds an all-intra 540p proxy
-that makes reverse and frame stepping smooth (also used automatically for files the browser cannot play).
+Track hotkeys follow physical keys, including Russian keyboard layouts. A track's stable ID can differ from its `hot` key; changing the hotkey does not rewrite existing marks. Settings support letters, digits, punctuation, and `alt+X` combinations.
+
+The `?` button lists the full controls, including one-handed transport, playback speed, mark navigation, multi-selection, and group nudging. Shift+P builds an all-intra 540p proxy for smoother reverse playback and frame stepping.
+
+## Validation
+
+See the [validation report](docs/VALIDATION.md) for the checks run and their limits.
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v
+```
+
+To run the deployment checks through Docker Compose:
+
+```sh
+.venv/bin/python tests/container_check.py --build
+```
+
+Both suites create temporary synthetic media and leave your library untouched.
