@@ -1,13 +1,13 @@
 'use strict';
 const $ = s => document.querySelector(s);
-const enc = encodeURIComponent;
+const enc = s => encodeURIComponent(s).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 async function apiRequest(u, options) {
   try {
     const response = await fetch(u, options), result = await response.json();
     if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
     return result;
   } catch (error) {
-    toast('Ошибка запроса: ' + error.message);
+    toast('Request failed: ' + error.message);
     throw error;
   }
 }
@@ -29,7 +29,7 @@ const typing = () => ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeEle
 // ============================================================================ LIBRARY
 let LIB = null, CFG = { tracks: [] }, CAT = { people: {}, tags: {}, videos: {} };
 // timelines: independent sets of marks per video ('' = source annotation, 'review' = notes on a finished cut), each with its own tracks
-const TLS = { '': 'Разметка', review: 'Правки' };
+const TLS = { '': 'Annotations', review: 'Review' };
 let TLN = ''; try { TLN = localStorage.getItem('rd.tl') || ''; if (!(TLN in TLS)) TLN = ''; } catch (e) {}
 const CFGS = {};
 const TLQ = () => TLN ? `&tl=${TLN}` : '';
@@ -64,8 +64,8 @@ async function loadLibrary(keepSel) {
   $('#rootInput').value = st.root || '';
   $('#rootInput').disabled = !!st.root_locked;
   $('#rootBtn').disabled = !!st.root_locked;
-  $('#rootInput').title = st.root_locked ? 'Медиатекой управляет администратор сервера' : '';
-  if (!st.root) { $('#grid').innerHTML = '<p class="muted">Укажи папку медиатеки сверху и нажми «Открыть».</p>'; return; }
+  $('#rootInput').title = st.root_locked ? 'The library is managed by the server administrator' : '';
+  if (!st.root) { $('#grid').innerHTML = '<p class="muted">Choose a library folder above and click Open.</p>'; return; }
   const prevRel = keepSel && FLAT[SEL] ? FLAT[SEL].v.rel : null;
   LIB = await api.get('/api/library'); CFG = LIB.config; CAT = LIB.catalog;
   for (const k of Object.keys(TLS)) if (k) CFGS[k] = await api.get(`/api/config?tl=${k}`);
@@ -108,10 +108,10 @@ function toggleFilter(set, id, e) {        // click = only this one, ⌘/Shift-c
 function renderSide() {
   const vids = allVideos();
   const fb = $('#folders'); fb.innerHTML = '';
-  sideItem(fb, '<span>Все папки</span>', vids.length, FOLDER === null, () => { FOLDER = null; renderSide(); renderGrid(); });
+  sideItem(fb, '<span>All folders</span>', vids.length, FOLDER === null, () => { FOLDER = null; renderSide(); renderGrid(); });
   for (const f of LIB.folders) {
     const bad = f.videos.filter(v => v.status === 'defect').length;
-    sideItem(fb, `<span>${esc(f.folder === '.' ? '(корень)' : f.folder)}</span>`, f.videos.length + (bad ? ' · ' + bad + '✕' : ''), FOLDER === f.folder, () => { FOLDER = f.folder; renderSide(); renderGrid(); });
+    sideItem(fb, `<span>${esc(f.folder === '.' ? '(root)' : f.folder)}</span>`, f.videos.length + (bad ? ' · ' + bad + '✕' : ''), FOLDER === f.folder, () => { FOLDER = f.folder; renderSide(); renderGrid(); });
   }
   const pc = useCount('people'), pb = $('#people'); pb.innerHTML = '';
   const ids = Object.keys(CAT.people).filter(id => !PSEARCH || norm(pname(id) + ' ' + (CAT.people[id].aliases || []).join(' ')).includes(PSEARCH))
@@ -119,16 +119,16 @@ function renderSide() {
   $('#peopleN').textContent = Object.keys(CAT.people).length || '';
   for (const id of ids) sideItem(pb, `${avatarHtml(id)}<span>${esc(pname(id))}</span>`, pc[id], FP.has(id), e => toggleFilter(FP, id, e));
   const nop = vids.filter(v => !vp(v.rel).length).length;
-  if (nop) sideItem(pb, '<span class="av">?</span><span>Без участников</span>', nop, FNONE === 'people', () => { FP.clear(); FNONE = FNONE === 'people' ? '' : 'people'; renderSide(); renderGrid(); });
+  if (nop) sideItem(pb, '<span class="av">?</span><span>No participants</span>', nop, FNONE === 'people', () => { FP.clear(); FNONE = FNONE === 'people' ? '' : 'people'; renderSide(); renderGrid(); });
   const tc = useCount('tags'), tb = $('#tags'); tb.innerHTML = '';
   const groups = {};
   for (const id in CAT.tags) (groups[CAT.tags[id].group || ''] ||= []).push(id);
   for (const g of Object.keys(groups).sort((a, b) => (a === '') - (b === '') || a.localeCompare(b))) {
-    const h = document.createElement('div'); h.className = 'grp'; h.textContent = g || 'прочее'; tb.appendChild(h);
+    const h = document.createElement('div'); h.className = 'grp'; h.textContent = g || 'other'; tb.appendChild(h);
     for (const id of groups[g].sort((a, b) => tname(a).localeCompare(tname(b)))) sideItem(tb, `<span>${esc(tname(id))}</span>`, tc[id], FT.has(id), e => toggleFilter(FT, id, e));
   }
   const not = vids.filter(v => !vt(v.rel).length).length;
-  if (not && Object.keys(CAT.tags).length) sideItem(tb, '<span>Без тегов</span>', not, FNONE === 'tags', () => { FT.clear(); FNONE = FNONE === 'tags' ? '' : 'tags'; renderSide(); renderGrid(); });
+  if (not && Object.keys(CAT.tags).length) sideItem(tb, '<span>No tags</span>', not, FNONE === 'tags', () => { FT.clear(); FNONE = FNONE === 'tags' ? '' : 'tags'; renderSide(); renderGrid(); });
   renderActive();
 }
 function renderActive() {
@@ -136,17 +136,17 @@ function renderActive() {
   const add = (label, off) => { const c = document.createElement('span'); c.className = 'chip'; c.textContent = label + '  ✕'; c.onclick = off; box.appendChild(c); };
   for (const id of FP) add(pname(id), () => { FP.delete(id); renderSide(); renderGrid(); });
   for (const id of FT) add('#' + tname(id), () => { FT.delete(id); renderSide(); renderGrid(); });
-  if (FNONE) add(FNONE === 'people' ? 'без участников' : 'без тегов', () => { FNONE = ''; renderSide(); renderGrid(); });
-  if (MSEL.size) add(`выбрано ${MSEL.size} — A участники · T теги · Esc снять`, () => { MSEL.clear(); paintSel(); renderActive(); });
+  if (FNONE) add(FNONE === 'people' ? 'no participants' : 'no tags', () => { FNONE = ''; renderSide(); renderGrid(); });
+  if (MSEL.size) add(`${MSEL.size} selected — A participants · T tags · Esc clear`, () => { MSEL.clear(); paintSel(); renderActive(); });
   box.classList.toggle('hidden', !box.children.length);
 }
 
 // ---------------------------------------------------------------- grid, grouped by folder / participant / tag
 function sections() {
-  if (GROUP === 'folder') return LIB.folders.map(f => ({ title: esc(f.folder === '.' ? '(корень)' : f.folder), vids: f.videos.filter(passes) }));
+  if (GROUP === 'folder') return LIB.folders.map(f => ({ title: esc(f.folder === '.' ? '(root)' : f.folder), vids: f.videos.filter(passes) }));
   const vids = allVideos().filter(passes), kind = GROUP === 'person' ? 'people' : 'tags', get = kind === 'people' ? vp : vt;
   if (GROUP === 'none') {
-    const t = [...FP].map(pname).concat([...FT].map(id => '#' + tname(id))).join(' + ') || 'Все видео';
+    const t = [...FP].map(pname).concat([...FT].map(id => '#' + tname(id))).join(' + ') || 'All videos';
     return [{ title: esc(t), vids: vids.slice().sort((a, b) => a.name.localeCompare(b.name)) }];
   }
   const only = kind === 'people' ? FP : FT;           // filtered by a participant: their group only, other participants stay as chips
@@ -158,7 +158,7 @@ function sections() {
     else { const g = CAT.tags[s.id].group; s.title = `${g ? esc(g) + ' · ' : ''}#${esc(tname(s.id))}`; }
   }
   const none = vids.filter(v => !get(v.rel).length);
-  if (none.length && !only.size) out.push({ title: kind === 'people' ? 'Без участников' : 'Без тегов', vids: none });
+  if (none.length && !only.size) out.push({ title: kind === 'people' ? 'No participants' : 'No tags', vids: none });
   return out;
 }
 
@@ -177,7 +177,7 @@ function renderGrid() {
     for (const v of s.vids) { const el = card(v, FLAT.length); cards.appendChild(el); FLAT.push({ v, el }); }
     sec.appendChild(cards); g.appendChild(sec);
   }
-  if (!FLAT.length) g.innerHTML = '<p class="muted">Ничего не найдено.</p>';
+  if (!FLAT.length) g.innerHTML = '<p class="muted">No matching videos.</p>';
   const i = keep ? FLAT.findIndex(x => x.v.rel === keep) : -1;
   SEL = clamp(i >= 0 ? i : SEL, 0, Math.max(0, FLAT.length - 1)); paintSel();
 }
@@ -185,7 +185,7 @@ function rerenderKeep() { const g = $('#grid'), st = g.scrollTop; renderSide(); 
 
 function card(v, idx) {
   const c = document.createElement('div'); c.className = 'card' + (v.status === 'defect' ? ' defect' : ''); c.dataset.idx = idx;
-  const badge = v.status === 'ok' ? '<span class="badge ok">OK</span>' : v.status === 'defect' ? '<span class="badge defect">брак</span>' : '';
+  const badge = v.status === 'ok' ? '<span class="badge ok">OK</span>' : v.status === 'defect' ? '<span class="badge defect">defect</span>' : '';
   const marks = v.nspans || v.ndraw ? `<span class="badge">${v.nspans}▮${v.ndraw ? ' ' + v.ndraw + '✎' : ''}</span>` : '';
   const who = vp(v.rel).map(id => `<span class="chip p" data-p="${esc(id)}">${esc(pname(id))}</span>`).join('') + vt(v.rel).map(id => `<span class="chip t" data-t="${esc(id)}">#${esc(tname(id))}</span>`).join('');
   c.innerHTML = `<div class="th" data-rel="${esc(v.rel)}"><div class="spr"></div><div class="scrub"></div><span class="tc">${v.duration ? fmt(v.duration, false) : ''}</span></div>
@@ -265,7 +265,7 @@ async function setStatus(rel, status) {
 }
 async function setStatusAll(status, msg) {
   const rels = targets(); for (const r of rels) await setStatus(r, status);
-  toast(msg + (rels.length > 1 ? ` · ${rels.length} видео` : '')); rerenderKeep();
+  toast(msg + (rels.length > 1 ? ` · ${rels.length} videos` : '')); rerenderKeep();
 }
 
 function libKey(e) {
@@ -282,9 +282,9 @@ function libKey(e) {
   else if (l === 'a') openTagger('people', targets());
   else if (l === 't') openTagger('tags', targets());
   else if (l === 'g') setGroup({ folder: 'person', person: 'tag', tag: 'none', none: 'folder' }[GROUP] || 'folder');
-  else if (l === 'x') { const v = FLAT[SEL]?.v; if (v) { const s = v.status === 'defect' ? 'unreviewed' : 'defect'; setStatusAll(s, s === 'defect' ? 'брак' : 'брак снят'); } }
+  else if (l === 'x') { const v = FLAT[SEL]?.v; if (v) { const s = v.status === 'defect' ? 'unreviewed' : 'defect'; setStatusAll(s, s === 'defect' ? 'defect' : 'Defect cleared'); } }
   else if (l === 'o') setStatusAll('ok', 'OK');
-  else if (l === 'u') setStatusAll('unreviewed', 'отметка снята');
+  else if (l === 'u') setStatusAll('unreviewed', 'Status cleared');
   else if (k === '?') $('#help').classList.toggle('hidden');
   else return;
   e.preventDefault();
@@ -304,7 +304,7 @@ async function catOps(ops) {
   CAT = r.catalog; return r;
 }
 function openTagger(kind, rels) {
-  if (!rels.length) return toast('ничего не выбрано');
+  if (!rels.length) return toast('Nothing selected');
   stopQuick(); if (VIEW === 'player') pause();
   TG.kind = kind; TG.rels = rels; $('#tagger').classList.remove('hidden');
   $('#tgInput').value = ''; renderTagger(); $('#tgInput').focus();
@@ -316,18 +316,18 @@ function closeTagger() {
 function renderTagger() {
   const kind = TG.kind, n = TG.rels.length, get = kind === 'people' ? vp : vt, name = kind === 'people' ? pname : tname;
   document.querySelectorAll('#tagger .tabs button').forEach(b => b.classList.toggle('on', b.dataset.k === kind));
-  $('#tgTarget').textContent = n === 1 ? (byRel[TG.rels[0]]?.name || TG.rels[0]) : `${n} видео`;
-  $('#tgInput').placeholder = kind === 'people' ? 'имя участника…' : 'тег… (можно «группа: тег»)';
+  $('#tgTarget').textContent = n === 1 ? (byRel[TG.rels[0]]?.name || TG.rels[0]) : `${n} videos`;
+  $('#tgInput').placeholder = kind === 'people' ? 'participant name…' : 'tag… (or group: tag)';
   const cnt = {}; for (const r of TG.rels) for (const id of get(r)) cnt[id] = (cnt[id] || 0) + 1;
   const box = $('#tgChips'); box.innerHTML = '';
   for (const id of Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])) {
     const c = document.createElement('span'); c.className = 'chip ' + (kind === 'people' ? 'p' : 't') + (cnt[id] < n ? ' part' : '');
     c.innerHTML = (kind === 'people' ? avatarHtml(id) : '') + esc(name(id)) + (cnt[id] < n ? ` <b>${cnt[id]}/${n}</b>` : '')
-      + (kind === 'people' && VIEW === 'player' ? '<i data-a="av" title="аватар из текущего кадра (с учётом зума)">📷</i>' : '') + '<i data-a="rm" title="убрать">✕</i>';
+      + (kind === 'people' && VIEW === 'player' ? '<i data-a="av" title="Use the current frame and zoom for this avatar">📷</i>' : '') + '<i data-a="rm" title="remove">✕</i>';
     c.onclick = async e => {
       const a = e.target.dataset.a;
       if (a === 'rm') await catOps([{ op: 'unassign', kind, id, rels: TG.rels }]);
-      else if (a === 'av') { await catOps([{ op: 'update', kind, id, fields: { avatar: frameRegion() } }]); toast('аватар: ' + name(id)); }
+      else if (a === 'av') { await catOps([{ op: 'update', kind, id, fields: { avatar: frameRegion() } }]); toast('Avatar: ' + name(id)); }
       else if (cnt[id] < n) await catOps([{ op: 'assign', kind, id, rels: TG.rels }]);
       renderTagger(); $('#tgInput').focus();
     };
@@ -350,7 +350,7 @@ function suggest() {
   const box = $('#tgSugg'); box.innerHTML = '';
   items.forEach((it, i) => {
     const d = document.createElement('div'); d.className = i === TG.si ? 'on' : '';
-    if (it.create) d.innerHTML = `＋ создать <b>${esc(it.create)}</b>`;
+    if (it.create) d.innerHTML = `＋ create <b>${esc(it.create)}</b>`;
     else {
       const e = CAT[kind][it.id]; const al = (e.aliases || []).length ? ` <span class="muted">(${esc(e.aliases.join(', '))})</span>` : '';
       d.innerHTML = (kind === 'people' ? avatarHtml(it.id) : '') + `<span>${kind === 'tags' && e.group ? esc(e.group) + ' · ' : ''}${esc(e.name)}${al}</span><small>${it.n}</small>`;
@@ -395,20 +395,20 @@ function renderCatalog() {
   const q = norm($('#catSearch').value), uc = useCount(CK), name = CK === 'people' ? pname : tname;
   const ids = Object.keys(CAT[CK]).filter(id => !q || norm(name(id) + ' ' + (CAT[CK][id].aliases || []).join(' ') + ' ' + (CAT[CK][id].group || '')).includes(q))
     .sort((a, b) => CK === 'tags' ? (CAT.tags[a].group || '~').localeCompare(CAT.tags[b].group || '~') || name(a).localeCompare(name(b)) : name(a).localeCompare(name(b)));
-  const box = $('#catRows'); box.innerHTML = ids.length ? '' : '<p class="muted">Пусто. Участники и теги появляются, когда их назначают: A / T в медиатеке.</p>';
+  const box = $('#catRows'); box.innerHTML = ids.length ? '' : '<p class="muted">No entries yet. Assign participants or tags with A / T in the library.</p>';
   const others = Object.keys(CAT[CK]).sort((a, b) => name(a).localeCompare(name(b)));
   for (const id of ids) {
     const e = CAT[CK][id], r = document.createElement('div'); r.className = 'row';
-    r.innerHTML = (CK === 'people' ? avatarHtml(id) : '') + `<input class="n" value="${esc(e.name)}" title="имя">`
-      + (CK === 'people' ? `<input class="a" value="${esc((e.aliases || []).join(', '))}" placeholder="псевдонимы через запятую">` : `<input class="a" value="${esc(e.group || '')}" placeholder="группа (студия, сцена, …)">`)
-      + `<span class="cnt" title="показать в медиатеке">${uc[id] || 0}</span>`
-      + `<select><option value="">объединить с…</option>${others.filter(o => o !== id).map(o => `<option value="${esc(o)}">${esc(name(o))}</option>`).join('')}</select>`
-      + `<button class="del" title="удалить">✕</button>`;
+    r.innerHTML = (CK === 'people' ? avatarHtml(id) : '') + `<input class="n" value="${esc(e.name)}" title="name">`
+      + (CK === 'people' ? `<input class="a" value="${esc((e.aliases || []).join(', '))}" placeholder="aliases, separated by commas">` : `<input class="a" value="${esc(e.group || '')}" placeholder="group (project, scene, …)">`)
+      + `<span class="cnt" title="show in library">${uc[id] || 0}</span>`
+      + `<select><option value="">merge into…</option>${others.filter(o => o !== id).map(o => `<option value="${esc(o)}">${esc(name(o))}</option>`).join('')}</select>`
+      + `<button class="del" title="delete">✕</button>`;
     const [n, a] = r.querySelectorAll('input');
-    n.onchange = async () => { if (await catOps([{ op: 'update', kind: CK, id, fields: { name: n.value } }])) toast('сохранено'); else n.value = e.name; };
+    n.onchange = async () => { if (await catOps([{ op: 'update', kind: CK, id, fields: { name: n.value } }])) toast('Saved'); else n.value = e.name; };
     a.onchange = async () => {
       const f = CK === 'people' ? { aliases: a.value.split(',').map(s => s.trim()).filter(Boolean) } : { group: a.value.trim() };
-      if (await catOps([{ op: 'update', kind: CK, id, fields: f }])) toast('сохранено');
+      if (await catOps([{ op: 'update', kind: CK, id, fields: f }])) toast('Saved');
     };
     r.querySelector('select').onchange = async ev => {
       const into = ev.target.value; if (!into) return;
@@ -416,8 +416,8 @@ function renderCatalog() {
     };
     const del = r.querySelector('.del');
     del.onclick = async () => {               // two clicks: no browser dialogs
-      if (!del.dataset.arm) { del.dataset.arm = 1; del.textContent = 'точно?'; setTimeout(() => { delete del.dataset.arm; del.textContent = '✕'; }, 2500); return; }
-      if (await catOps([{ op: 'delete', kind: CK, id }])) { toast('удалено: ' + e.name); renderCatalog(); }
+      if (!del.dataset.arm) { del.dataset.arm = 1; del.textContent = 'Confirm?'; setTimeout(() => { delete del.dataset.arm; del.textContent = '✕'; }, 2500); return; }
+      if (await catOps([{ op: 'delete', kind: CK, id }])) { toast('Deleted: ' + e.name); renderCatalog(); }
     };
     r.querySelector('.cnt').onclick = () => {
       if (VIEW !== 'lib') return;
@@ -455,7 +455,7 @@ function trackOf(K) {
 // a track's id (its key in the marks) and the key that marks it may differ: config 'hot' — a letter, a digit, ` or 'alt+X'
 const hotOf = t => (t.hot || t.key).toUpperCase();
 const keyToTrack = (k, alt) => { const H = (alt ? 'ALT+' : '') + k.toUpperCase(); const t = trackDefs().find(t => hotOf(t) === H); return t ? t.key : null; };
-const hotLabel = K => { const t = trackDefs().find(x => x.key === K); if (!t) return K.length === 1 ? K : '·'; const h = hotOf(t); return h.startsWith('ALT+') ? '⌥' + h.slice(4) : (KEY_RU[h] ? h + KEY_RU[h] : h); };
+const hotLabel = K => { const t = trackDefs().find(x => x.key === K); if (!t) return K.length === 1 ? K : '·'; const h = hotOf(t); return h.startsWith('ALT+') ? '⌥' + h.slice(4) : h; };
 // russian layout: map physical keys to latin letters so marking works on any layout
 const RU = { 'й': 'q', 'ц': 'w', 'у': 'e', 'к': 'r', 'е': 't', 'н': 'y', 'г': 'u', 'ш': 'i', 'щ': 'o', 'з': 'p', 'ф': 'a', 'ы': 's', 'в': 'd', 'а': 'f', 'п': 'g', 'р': 'h', 'о': 'j', 'л': 'k', 'д': 'l', 'я': 'z', 'ч': 'x', 'с': 'c', 'м': 'v', 'и': 'b', 'т': 'n', 'ь': 'm', 'б': ',', 'ю': '.', 'х': '[', 'ъ': ']' };
 const CODE_PUNCT = { Semicolon: ';', Quote: "'", Slash: '/', Backquote: '`' };   // ; ' / ` work as track keys on any layout (RU: ж э . ё)
@@ -484,12 +484,12 @@ async function loadTimeline() {
   P.marks = Object.assign({ version: 1, status: 'unreviewed', note: '', tracks: {}, drawings: [] }, m || {});
   for (const t of trackDefs()) trackOf(t.key);
 }
-function updateTlBtn() { const b = $('#tlBtn'); if (b) { b.textContent = 'Таймлайн: ' + TLS[TLN]; b.classList.toggle('on', !!TLN); } }
+function updateTlBtn() { const b = $('#tlBtn'); if (b) { b.textContent = 'Timeline: ' + TLS[TLN]; b.classList.toggle('on', !!TLN); } }
 async function switchTimeline() {
   clearTimeout(saveT); if (P.marks) await api.post(`/api/marks?rel=${enc(P.rel)}${TLQ()}`, P.marks);     // flush the one we leave
   const ks = Object.keys(TLS); TLN = ks[(ks.indexOf(TLN) + 1) % ks.length]; try { localStorage.setItem('rd.tl', TLN); } catch (e) {}
   P.sel = null; P.msel = new Set(); P.held = {}; P.latched = {}; P.undo = []; P.redo = [];
-  await loadTimeline(); updateTlBtn(); resizeTimeline(); toast('таймлайн: ' + TLS[TLN]);
+  await loadTimeline(); updateTlBtn(); resizeTimeline(); toast('Timeline: ' + TLS[TLN]);
 }
 
 function setSource(proxy, keepTime) {
@@ -507,7 +507,7 @@ function setSource(proxy, keepTime) {
 
 video.addEventListener('error', () => {
   if (VIEW !== 'player' || P.proxy) return;
-  toast('Браузер не играет этот файл — делаю прокси…'); requestProxy(true);
+  toast('This format needs a playback proxy. Building one…'); requestProxy(true);
 });
 
 function fitView() {
@@ -579,15 +579,15 @@ function drawHud(t) {
   for (const K in P.held) { const tr = trackOf(K); html += `<span style="background:${tr.color}">● ${K} ${tr.label} ${(P.held[K].max - P.held[K].min).toFixed(1)}s</span>`; }
   for (const K in P.marks.tracks) if (SHOW_SPEECH || !SPEECH.includes(K)) for (const sp of P.marks.tracks[K].spans)      // captions of the marks under the playhead
     if (sp[2] && t >= sp[0] - 0.05 && t <= Math.max(sp[1], sp[0] + 1) + 0.05) html += `<span style="background:${trackOf(K).color}">${K.startsWith('auto_') ? trackOf(K).label : K} · ${esc(sp[2])}</span>`;
-  for (const K in P.latched) { const tr = trackOf(K); html += `<span style="background:${tr.color}">⏺ ${K} ${tr.label} с ${fmt(P.latched[K])}</span>`; }
+  for (const K in P.latched) { const tr = trackOf(K); html += `<span style="background:${tr.color}">⏺ ${K} ${tr.label} from ${fmt(P.latched[K])}</span>`; }
   if (held.innerHTML !== html) held.innerHTML = html;
-  $('#pMode').textContent = P.mode === 'draw' ? `РИСУНОК · цвет ${P.pen + 1} · ${P.penW}px · Enter сохранить` : '';
+  $('#pMode').textContent = P.mode === 'draw' ? `DRAW · color ${P.pen + 1} · ${P.penW}px · Enter to save` : '';
 }
 
 // ---------------------------------------------------------------- marks
 function snapshot() { P.undo.push(JSON.stringify({ tracks: P.marks.tracks, drawings: P.marks.drawings })); if (P.undo.length > 200) P.undo.shift(); P.redo = []; }
 function restore(s) { const o = JSON.parse(s); P.marks.tracks = o.tracks; P.marks.drawings = o.drawings; P.sel = null; P.msel = new Set(); save(); }
-function undo() { if (!P.undo.length) return toast('нечего отменять'); P.redo.push(JSON.stringify({ tracks: P.marks.tracks, drawings: P.marks.drawings })); restore(P.undo.pop()); toast('отменено'); }
+function undo() { if (!P.undo.length) return toast('Nothing to undo'); P.redo.push(JSON.stringify({ tracks: P.marks.tracks, drawings: P.marks.drawings })); restore(P.undo.pop()); toast('Undone'); }
 function redo() { if (!P.redo.length) return; P.undo.push(JSON.stringify({ tracks: P.marks.tracks, drawings: P.marks.drawings })); restore(P.redo.pop()); }
 
 function addSpan(K, a, b) {
@@ -606,12 +606,12 @@ function deleteSel() {
   if (P.msel && P.msel.size) {                 // many selected: one undo step
     snapshot(); let n = 0;
     for (const K in P.marks.tracks) { const tr = P.marks.tracks[K], before = tr.spans.length; tr.spans = tr.spans.filter(x => !P.msel.has(x)); n += before - tr.spans.length; }
-    P.msel = new Set(); P.sel = null; save(); return toast(`удалено ${n} меток · ⌘Z вернуть`);
+    P.msel = new Set(); P.sel = null; save(); return toast(`${n} marks deleted · ⌘Z to undo`);
   }
   if (!P.sel) return;
   snapshot();
   if (P.sel.K === '✎') P.marks.drawings.splice(P.sel.i, 1); else trackOf(P.sel.K).spans.splice(P.sel.i, 1);
-  P.sel = null; save(); toast('удалено');
+  P.sel = null; save(); toast('Deleted');
 }
 let saveT = 0;
 function save() {
@@ -623,14 +623,14 @@ function save() {
     const v = byRel[P.rel]; if (v) { v.status = m.status; v.nspans = Object.values(m.tracks).reduce((a, t) => a + t.spans.length, 0); v.ndraw = m.drawings.length; }
   }, 300);
 }
-function setPStatus(s) { P.marks.status = s; save(); updateStatusBadge(); toast(s === 'defect' ? 'видео — брак' : s === 'ok' ? 'видео — OK' : 'отметка снята'); }
+function setPStatus(s) { P.marks.status = s; save(); updateStatusBadge(); toast(s === 'defect' ? 'Video marked as defective' : s === 'ok' ? 'Video marked as OK' : 'Status cleared'); }
 function updatePeople() {
   const ppl = vp(P.rel).map(pname), tg = vt(P.rel).map(id => '#' + tname(id));
   $('#pPeople').textContent = ppl.concat(tg).join(' · ');
 }
 function updateStatusBadge() {
   const b = $('#pStatus'), s = P.marks.status;
-  b.className = 'badge ' + (s === 'ok' ? 'ok' : s === 'defect' ? 'defect' : ''); b.textContent = s === 'ok' ? 'OK' : s === 'defect' ? 'БРАК' : 'не отсмотрено';
+  b.className = 'badge ' + (s === 'ok' ? 'ok' : s === 'defect' ? 'defect' : ''); b.textContent = s === 'ok' ? 'OK' : s === 'defect' ? 'DEFECT' : 'unreviewed';
 }
 function edges() {
   const e = [];
@@ -643,7 +643,7 @@ function edges() {
 const TL = { left: 130, ovH: 26, rulerH: 20, rowH: 22 };
 let SHOW_AUX = false;                // tracks with no key in the config (agent's auto tracks, leftovers) are hidden unless asked for
 try { SHOW_AUX = localStorage.getItem('rd.aux') === '1'; } catch (e) {}
-const SPEECH = ['auto_speech', 'auto_expr'];   // the agent's speech layer (speechscan.py): its own switch, «Речь»
+const SPEECH = ['auto_speech', 'auto_expr'];   // the agent's speech layer (speechscan.py): its own switch, Speech
 let SHOW_SPEECH = true;
 try { SHOW_SPEECH = localStorage.getItem('rd.speech') !== '0'; } catch (e) {}
 function rows() {
@@ -652,7 +652,6 @@ function rows() {
   extra.sort((a, b) => SPEECH.includes(b) - SPEECH.includes(a));
   return trackDefs().map(t => t.key).concat(extra).concat(['✎']);
 }
-const KEY_RU = { ';': 'ж', "'": 'э', '`': 'ё', '/': '.' };   // what the punctuation keys print on the Russian layout
 function resizeTimeline() {
   const n = rows().length;
   TL.rowH = clamp(Math.floor((window.innerHeight * 0.42 - TL.ovH - TL.rulerH - 18) / n), 13, 22);   // the timeline never eats the picture
@@ -678,22 +677,22 @@ function drawTimeline(t) {
   c.strokeStyle = 'rgba(255,204,51,.8)'; c.lineWidth = 1; c.strokeRect(L + a / D * w, 3, Math.max(2, (b - a) / D * w), TL.ovH - 6);
   c.fillStyle = '#fff'; c.fillRect(L + t / D * w - 1, 2, 2, TL.ovH - 4);
   c.fillStyle = '#8a90a0'; c.font = '11px -apple-system, sans-serif'; c.textBaseline = 'middle';
-  c.fillText('весь файл', 10, TL.ovH / 2);
+  c.fillText('full video', 10, TL.ovH / 2);
   // ruler of the detail window
   const y0 = TL.ovH + 4, X = tt => L + (tt - a) / (b - a) * w;
   const steps = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600]; const step = steps.find(s => (b - a) / s <= w / 70) || 600;
   c.strokeStyle = '#2b2f3a'; c.fillStyle = '#8a90a0';
   for (let s = Math.ceil(a / step) * step; s <= b; s += step) { const x = X(s); c.beginPath(); c.moveTo(x, y0 + 12); c.lineTo(x, H); c.stroke(); c.fillText(fmt(s, step < 1), x + 3, y0 + 7); }
-  c.fillText(`окно ${Math.round(b - a)} с  [ ]`, 10, y0 + 7);
+  c.fillText(`window ${Math.round(b - a)} s  [ ]`, 10, y0 + 7);
   // rows
   const ry = y0 + TL.rulerH;
-  const grp = K => (trackDefs().find(t => t.key === K) || {}).group || (K === '✎' ? '✎' : 'служебное');
+  const grp = K => (trackDefs().find(t => t.key === K) || {}).group || (K === '✎' ? '✎' : 'auxiliary');
   rs.forEach((K, i) => {
     const y = ry + i * TL.rowH;
     const sep = () => { if (i && grp(K) !== grp(rs[i - 1])) { c.fillStyle = '#5a6172'; c.fillRect(0, y, W, 2); } };   // a line between groups
     if (K === '✎') {
       sep();
-      c.fillStyle = '#ff6ad5'; c.fillText('✎ рисунки', 10, y + TL.rowH / 2);
+      c.fillStyle = '#ff6ad5'; c.fillText('✎ drawings', 10, y + TL.rowH / 2);
       P.marks.drawings.forEach((d, j) => {
         if (d.t < a || d.t > b) return; const x = X(d.t); const sel = P.sel && P.sel.K === '✎' && P.sel.i === j;
         c.fillStyle = sel ? '#fff' : '#ff6ad5'; c.beginPath(); c.moveTo(x, y + 3); c.lineTo(x + 6, y + TL.rowH / 2); c.lineTo(x, y + TL.rowH - 3); c.lineTo(x - 6, y + TL.rowH / 2); c.fill();
@@ -727,7 +726,7 @@ function drawTimeline(t) {
     c.fillRect(x0, yA, x1 - x0, yB - yA); c.strokeRect(x0, yA, x1 - x0, yB - yA);
   }
   if (P.msel.size) {
-    const msg = `выделено ${P.msel.size} · Del удалить · тянуть — сдвинуть · Esc снять`, mw = c.measureText(msg).width;
+    const msg = `${P.msel.size} selected · Del delete · drag to move · Esc clear`, mw = c.measureText(msg).width;
     c.fillStyle = '#ffcc33'; c.fillRect(TL.left + 4, y0 - 2, mw + 12, 17); c.fillStyle = '#111'; c.fillText(msg, TL.left + 10, y0 + 7);
   }
   // playhead
@@ -764,7 +763,7 @@ tl.addEventListener('pointerdown', e => {
     const K = rows()[rowIdx(ly)]; if (!K || K === '✎' || !P.marks.tracks[K]) return;
     const [a, b] = win(curT()); if (!(e.metaKey || e.ctrlKey)) P.msel = new Set();
     for (const sp of P.marks.tracks[K].spans) if (e.shiftKey || (sp[1] >= a && sp[0] <= b)) P.msel.add(sp);
-    P.sel = null; toast(`${K}: выделено ${P.msel.size}`); return;
+    P.sel = null; toast(`${K}: selected ${P.msel.size}`); return;
   }
   if (e.shiftKey && h.t !== undefined) {                            // Shift-drag: rubber band over rows and time
     if (!(e.metaKey || e.ctrlKey)) P.msel = new Set();
@@ -824,7 +823,7 @@ tl.addEventListener('pointerup', () => {
       const K = rs[i]; if (!K || K === '✎' || !P.marks.tracks[K]) continue;
       for (const sp of P.marks.tracks[K].spans) if (sp[1] >= ta && sp[0] <= tb) P.msel.add(sp);
     }
-    P.box = null; P.winLock = null; toast(`выделено ${P.msel.size}`); return;
+    P.box = null; P.winLock = null; toast(`selected ${P.msel.size}`); return;
   }
   const ed = P.edit;
   if (ed) {
@@ -844,12 +843,12 @@ function nudgeSel(df) {
     const d = clamp(df * fr, -Math.min(...L.map(s => s[0])), D - Math.max(...L.map(s => s[1])));
     for (const s of L) { s[0] = +(s[0] + d).toFixed(3); s[1] = +(s[1] + d).toFixed(3); } save(); return;
   }
-  if (!P.sel || P.sel.K === '✎') return toast('сначала выбери метку на таймлайне');
+  if (!P.sel || P.sel.K === '✎') return toast('Select a timeline mark first');
   snapshot(); const s = trackOf(P.sel.K).spans[P.sel.i], fr = 1 / (P.meta.fps || 30), D = video.duration || P.meta.duration;
   const d = clamp(df * fr, -s[0], D - s[1]); s[0] = +(s[0] + d).toFixed(3); s[1] = +(s[1] + d).toFixed(3); seekTo(s[0]); save();
 }
 function edgeToPlayhead(which) {
-  if (!P.sel || P.sel.K === '✎') return toast('сначала выбери метку на таймлайне');
+  if (!P.sel || P.sel.K === '✎') return toast('Select a timeline mark first');
   snapshot(); const s = trackOf(P.sel.K).spans[P.sel.i], t = +curT().toFixed(3);
   if (s[1] - s[0] <= 0) { s[0] = s[1] = t; }
   else if (which === 'start') s[0] = Math.min(t, s[1]); else s[1] = Math.max(t, s[0]);
@@ -887,7 +886,7 @@ async function saveDraw() {
     c.drawImage(video, 0, 0, P.vw, P.vh); c.drawImage(dcv, 0, 0);
     const r = await api.post(`/api/drawing?rel=${enc(P.rel)}`, { t, png: off.toDataURL('image/png') });
     snapshot(); P.marks.drawings.push({ t, png: r.abs, strokes: P.strokes }); P.marks.drawings.sort((a, b) => a.t - b.t); save();
-    toast('рисунок сохранён · ' + fmt(t));
+    toast('Drawing saved · ' + fmt(t));
   }
   exitDraw();
 }
@@ -903,16 +902,16 @@ function drawSaved(t) {      // show saved drawings around their frame
 async function requestProxy(auto) {
   const r = await api.post(`/api/proxy?rel=${enc(P.rel)}`, {}); updateProxyBtn(r.status);
   if (r.status === 'done') return setSource(true, true);
-  const rel = P.rel; toast('прокси готовится…');
+  const rel = P.rel; toast('Building proxy…');
   const poll = setInterval(async () => {
     const s = await api.get(`/api/proxy?rel=${enc(rel)}`); if (P.rel === rel) updateProxyBtn(s.status);
-    if (s.status === 'done') { clearInterval(poll); if (P.rel === rel) { setSource(true, true); toast('прокси готов: обратная перемотка плавная'); } }
-    if (s.status === 'error') { clearInterval(poll); toast('прокси не получился'); }
+    if (s.status === 'done') { clearInterval(poll); if (P.rel === rel) { setSource(true, true); toast('Proxy ready: smooth reverse playback'); } }
+    if (s.status === 'error') { clearInterval(poll); toast('Proxy generation failed'); }
   }, 2000);
 }
 function updateProxyBtn(st) {
   const b = $('#proxyBtn');
-  b.textContent = P.proxy ? 'Прокси ✓' : st === 'running' || st === 'queued' ? 'Прокси…' : st === 'done' ? 'Прокси (есть)' : 'Прокси';
+  b.textContent = P.proxy ? 'Proxy ✓' : st === 'running' || st === 'queued' ? 'Proxy…' : st === 'done' ? 'Proxy ready' : 'Proxy';
   b.classList.toggle('on', P.proxy);
 }
 $('#proxyBtn').onclick = async () => {
@@ -930,7 +929,7 @@ function backToLib() {
 function nextVideo(d) {
   let i = FLAT.findIndex(x => x.v.rel === P.rel), j = i + d;
   while (j >= 0 && j < FLAT.length && FLAT[j].v.rel === P.rel) j += d;      // grouped by participant, the same video may repeat
-  if (i < 0 || j < 0 || j >= FLAT.length) return toast('это крайнее видео');
+  if (i < 0 || j < 0 || j >= FLAT.length) return toast('No more videos in this direction');
   clearTimeout(saveT); save(); SEL = j; openPlayer(FLAT[j].v.rel);
 }
 
@@ -950,7 +949,7 @@ function playerKeyDown(e) {
   if (cmd && l === 'a') {                       // every mark in the visible window (Shift: the whole file)
     const [a, b] = win(curT()); P.msel = new Set(); P.sel = null;
     for (const K in P.marks.tracks) for (const sp of P.marks.tracks[K].spans) if (e.shiftKey || (sp[1] >= a && sp[0] <= b)) P.msel.add(sp);
-    toast(`выделено ${P.msel.size}`); return e.preventDefault();
+    toast(`selected ${P.msel.size}`); return e.preventDefault();
   }
   if (e.ctrlKey && k.startsWith('Arrow')) {
     const d = 60; if (k === 'ArrowLeft') P.panX += d; if (k === 'ArrowRight') P.panX -= d; if (k === 'ArrowUp') P.panY += d; if (k === 'ArrowDown') P.panY -= d;
@@ -962,7 +961,7 @@ function playerKeyDown(e) {
   if (K) {
     if (!e.repeat) {
       const t = curT();
-      if (e.shiftKey) { if (P.latched[K] === undefined) { P.latched[K] = t; toast(`${K}: начало ${fmt(t)}`); } else { const a = P.latched[K]; delete P.latched[K]; addSpan(K, Math.min(a, t), Math.max(a, t)); } }
+      if (e.shiftKey) { if (P.latched[K] === undefined) { P.latched[K] = t; toast(`${K}: start ${fmt(t)}`); } else { const a = P.latched[K]; delete P.latched[K]; addSpan(K, Math.min(a, t), Math.max(a, t)); } }
       else if (!P.held[K]) P.held[K] = { t0: t, min: t, max: t };
     }
     return e.preventDefault();
@@ -1010,12 +1009,12 @@ function playerKeyDown(e) {
   else if (l === 'u') setPStatus('unreviewed');
   else if (l === 'i') openTagger('people', [P.rel]);
   else if (l === 'n' && P.sel && P.sel.K !== '✎') {          // a selected mark gets its own caption: [start, end, "text"]
-    const sp = trackOf(P.sel.K).spans[P.sel.i], n = prompt(`Подпись к метке ${P.sel.K} ${fmt(sp[0])}`, sp[2] || '');
+    const sp = trackOf(P.sel.K).spans[P.sel.i], n = prompt(`Caption for mark ${P.sel.K} at ${fmt(sp[0])}`, sp[2] || '');
     if (n !== null) { snapshot(); if (n.trim()) sp[2] = n.trim(); else sp.length = 2; save(); }
   }
-  else if (l === 'n') { const n = prompt('Заметка к видео', P.marks.note || ''); if (n !== null) { P.marks.note = n; save(); } }
+  else if (l === 'n') { const n = prompt('Video note', P.marks.note || ''); if (n !== null) { P.marks.note = n; save(); } }
   else if (k === 'Delete' || k === 'Backspace') deleteSel();
-  else if (k === 'Escape') { if (P.msel.size) { P.msel = new Set(); toast('выделение снято'); } else if (P.sel) P.sel = null; else backToLib(); }
+  else if (k === 'Escape') { if (P.msel.size) { P.msel = new Set(); toast('Selection cleared'); } else if (P.sel) P.sel = null; else backToLib(); }
   else if (k === '?') $('#help').classList.toggle('hidden');
   else return;
   e.preventDefault();
@@ -1047,7 +1046,7 @@ $('#search').addEventListener('input', e => { SEARCH = e.target.value.toLowerCas
 document.querySelectorAll('#filters button').forEach(b => b.onclick = () => {
   FILTER = b.dataset.f; document.querySelectorAll('#filters button').forEach(x => x.classList.toggle('on', x === b)); renderGrid();
 });
-$('#exportBtn').onclick = async () => { const r = await api.get('/api/export'); toast(`all.json: ${Object.keys(r.videos).length} видео`); };
+$('#exportBtn').onclick = async () => { const r = await api.get('/api/export'); toast(`all.json: ${Object.keys(r.videos).length} videos`); };
 $('#backBtn').onclick = backToLib;
 $('#pTagBtn').onclick = () => openTagger('people', [P.rel]);
 $('#auxBtn').classList.toggle('on', SHOW_AUX);
@@ -1064,7 +1063,7 @@ function renderTrackRows() {
   for (const t of curCfg().tracks) {
     const r = document.createElement('div'); r.className = 'row';
     r.dataset.group = t.group || '';
-    r.innerHTML = `<input class="k" maxlength="1" value="${t.key}" title="код дорожки в разметке"><input class="h" value="${t.hot || ''}" placeholder="${t.key}" title="клавиша: буква, цифра или alt+буква"><input class="l" value="${t.label.replace(/"/g, '&quot;')}"><input type="color" value="${t.color}"><button>✕</button>`;
+    r.innerHTML = `<input class="k" maxlength="1" value="${t.key}" title="track ID in annotation files"><input class="h" value="${t.hot || ''}" placeholder="${t.key}" title="hotkey: letter, digit, or alt+letter"><input class="l" value="${t.label.replace(/"/g, '&quot;')}"><input type="color" value="${t.color}"><button>✕</button>`;
     r.querySelector('button').onclick = () => r.remove(); box.appendChild(r);
   }
 }
@@ -1077,13 +1076,13 @@ function readTrackRows() {
 const RESERVED = ['J', 'K', 'L', 'P', 'O', 'U', 'N', 'I', '`'];   // playback / tools keys
 $('#saveTracks').onclick = async () => {
   const tr = readTrackRows().filter(t => /^[A-Z;'\/`]$/.test(t.key));
-  const bad = tr.filter(t => RESERVED.includes(hotOf(t))); if (bad.length) return toast(`клавиши ${RESERVED.join(' ')} заняты управлением`);
-  const hs = tr.map(hotOf); if (new Set(hs).size < hs.length) return toast('одна клавиша на двух дорожках');
-  if (hs.some(h => h.startsWith('SHIFT+'))) return toast('Shift занят защёлкой (начало/конец метки) — выбери букву или цифру');
-  if (hs.some(h => h.startsWith('ALT+'))) toast('⌥ у дорожки: с зажатым ⌥ пробел вызовет Spotlight');
+  const bad = tr.filter(t => RESERVED.includes(hotOf(t))); if (bad.length) return toast(`Keys ${RESERVED.join(' ')} are reserved for playback`);
+  const hs = tr.map(hotOf); if (new Set(hs).size < hs.length) return toast('Two tracks cannot use the same hotkey');
+  if (hs.some(h => h.startsWith('SHIFT+'))) return toast('Shift is reserved for latching marks. Choose a letter or digit.');
+  if (hs.some(h => h.startsWith('ALT+'))) toast('An Option hotkey plus Space may open Spotlight');
   curCfg().tracks = tr; await api.post('/api/config' + (TLN ? `?tl=${TLN}` : ''), curCfg()); $('#settings').classList.add('hidden');
   if (P.marks) { for (const t of tr) trackOf(t.key); save(); resizeTimeline(); }
-  toast('дорожки сохранены');
+  toast('Tracks saved');
 };
 
 // clicked buttons must not keep focus: Space / Enter belong to the player

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,46 +9,46 @@
 </head>
 <body>
 
-<!-- ============================ LIBRARY ============================ -->
+<!-- LIBRARY -->
 <section id="lib" class="view">
   <header class="bar">
     <b class="logo">REVIEW DECK</b>
-    <input id="rootInput" placeholder="/путь/к/папке" spellcheck="false">
-    <button id="rootBtn">Открыть</button>
+    <input id="rootInput" placeholder="/path/to/library" spellcheck="false">
+    <button id="rootBtn">Open</button>
     <div class="chips" id="filters">
-      <button data-f="all" class="on">Все</button>
-      <button data-f="unreviewed">Не отсмотрено</button>
+      <button data-f="all" class="on">All</button>
+      <button data-f="unreviewed">Unreviewed</button>
       <button data-f="ok">OK</button>
-      <button data-f="defect">Брак</button>
-      <button data-f="marked">Размечено</button>
+      <button data-f="defect">Defect</button>
+      <button data-f="marked">Annotated</button>
     </div>
-    <input id="search" placeholder="поиск" spellcheck="false">
-    <div class="chips" id="groupBy" title="G — переключить группировку">
-      <button data-g="folder" class="on">Папки</button>
-      <button data-g="person">Участники</button>
-      <button data-g="tag">Теги</button>
-      <button data-g="none" title="одним списком, без разбивки">Списком</button>
+    <input id="search" placeholder="search" spellcheck="false">
+    <div class="chips" id="groupBy" title="G: change grouping">
+      <button data-g="folder" class="on">Folders</button>
+      <button data-g="person">Participants</button>
+      <button data-g="tag">Tags</button>
+      <button data-g="none" title="One list without groups">List</button>
     </div>
-    <button id="catalogBtn" title="участники и теги: переименовать, объединить, удалить">Справочник</button>
-    <button id="exportBtn" title="записать _review/all.json">Экспорт JSON</button>
+    <button id="catalogBtn" title="Rename, merge, or delete participants and tags">Catalog</button>
+    <button id="exportBtn" title="Write all.json to the review data directory">Export JSON</button>
     <button id="helpBtn1">?</button>
   </header>
   <div class="libbody">
     <nav id="side">
-      <div class="sh">Папки</div><div id="folders"></div>
-      <div class="sh">Участники <small id="peopleN"></small></div><input id="peopleSearch" class="sidesearch" placeholder="найти участника" spellcheck="false"><div id="people"></div>
-      <div class="sh">Теги</div><div id="tags"></div>
+      <div class="sh">Folders</div><div id="folders"></div>
+      <div class="sh">Participants <small id="peopleN"></small></div><input id="peopleSearch" class="sidesearch" placeholder="find a participant" spellcheck="false"><div id="people"></div>
+      <div class="sh">Tags</div><div id="tags"></div>
     </nav>
     <main id="grid"></main>
   </div>
   <div id="activeFilters" class="hidden"></div>
-  <footer class="hint">Стрелки — выбор · ⌘/Shift+клик — несколько · Пробел — быстрый просмотр · A — участники · T — теги · G — группировка · X брак · O OK · U снять · Enter — разметка</footer>
+  <footer class="hint">Arrows: select · ⌘/Shift-click: multi-select · Space: quick preview · A: participants · T: tags · G: grouping · X: defect · O: OK · U: clear status · Enter: annotate</footer>
 </section>
 
-<!-- ============================ PLAYER ============================ -->
+<!-- PLAYER -->
 <section id="player" class="view hidden">
   <header class="bar">
-    <button id="backBtn" title="Esc">← Медиатека</button>
+    <button id="backBtn" title="Esc">← Library</button>
     <span id="pTitle" class="ptitle"></span>
     <span id="pStatus" class="badge"></span>
     <span class="grow"></span>
@@ -57,12 +57,12 @@
     <span id="pZoom" class="zoomlbl">100%</span>
     <span id="pTime" class="time">0:00.00 / 0:00</span>
     <span id="pPeople" class="ppeople"></span>
-    <button id="pTagBtn" title="I: участники и теги этого видео">Участники · теги</button>
-    <button id="tlBtn" title="переключить таймлайн: разметка / правки готового монтажа (свои дорожки и метки)">Таймлайн</button>
-    <button id="speechBtn" title="слой речи: расшифровка диалогов и предполагаемые expressions (агент)">Речь</button>
-    <button id="auxBtn" title="показать служебные дорожки (авто-контакты агента и т.п.)">Служебные</button>
-    <button id="proxyBtn" title="Shift+P: сделать прокси для плавной обратной перемотки">Прокси</button>
-    <button id="settingsBtn">Клавиши</button>
+    <button id="pTagBtn" title="I: participants and tags for this video">Participants · tags</button>
+    <button id="tlBtn" title="Switch between source annotations and independent edit notes">Timeline</button>
+    <button id="speechBtn" title="Show speech transcripts and expression annotations from agents">Speech</button>
+    <button id="auxBtn" title="Show auxiliary tracks generated by agents">Auxiliary</button>
+    <button id="proxyBtn" title="Shift+P: build a proxy for smooth reverse playback">Proxy</button>
+    <button id="settingsBtn">Hotkeys</button>
     <button id="helpBtn2">?</button>
   </header>
   <div id="stage">
@@ -73,92 +73,89 @@
     <div id="flash"></div>
     <div id="held"></div>
   </div>
-  <div id="timeline">
-    <canvas id="tl"></canvas>
-  </div>
+  <div id="timeline"><canvas id="tl"></canvas></div>
 </section>
 
-<!-- ============================ OVERLAYS ============================ -->
+<!-- HELP -->
 <div id="help" class="overlay hidden">
   <div class="panel">
-    <h2>Клавиши</h2>
+    <h2>Keyboard controls</h2>
     <div class="cols">
       <div>
-        <h3>Левой рукой</h3>
-        <p><kbd>Пробел</kbd> пауза / продолжить</p>
-        <p><kbd>Tab</kbd> назад 2 с · <kbd>Shift+Tab</kbd> 10 с</p>
-        <p><kbd>`</kbd> вперёд 2 с · <kbd>Shift+`</kbd> 10 с</p>
-        <p><kbd>⌥3</kbd> медленнее · <kbd>⌥4</kbd> быстрее · <kbd>⌥5</kbd> 1×</p>
-        <p><kbd>⌥Z</kbd> <kbd>⌥C</kbd> на кадр назад / вперёд</p>
-        <p><kbd>⌥X</kbd> удалить выбранные метки</p>
-        <p><kbd>⌥R</kbd> сменить направление</p>
-        <p><kbd>⌥Tab</kbd> / <kbd>⌥⇧Tab</kbd> следующее / прошлое видео</p>
-        <p class="muted">клавиши дорожек — слева на таймлайне (редкие — на цифрах)</p>
-        <h3>Правой рукой (как раньше)</h3>
-        <p><kbd>L</kbd> вперёд, ещё раз — быстрее · <kbd>J</kbd> назад · <kbd>K</kbd> стоп</p>
-        <p><kbd>↑</kbd> <kbd>↓</kbd> скорость по шагам 0.1…16× · <kbd>6</kbd>…<kbd>9</kbd> 1.5 2 4 8× · <kbd>0</kbd> 1×</p>
-        <p><kbd>←</kbd> <kbd>→</kbd> 2 с · <kbd>Shift</kbd> 10 с · <kbd>⌘</kbd> 60 с</p>
-        <p><kbd>,</kbd> <kbd>.</kbd> или <kbd>⌥←</kbd> <kbd>⌥→</kbd> на кадр</p>
-        <p><kbd>Home</kbd> <kbd>End</kbd> начало / конец</p>
-        <p><kbd>PgUp</kbd> <kbd>PgDn</kbd> к прошлой / следующей метке</p>
+        <h3>Left-hand playback</h3>
+        <p><kbd>Space</kbd> pause / resume</p>
+        <p><kbd>Tab</kbd> back 2 s · <kbd>Shift+Tab</kbd> back 10 s</p>
+        <p><kbd>`</kbd> forward 2 s · <kbd>Shift+`</kbd> forward 10 s</p>
+        <p><kbd>⌥3</kbd> slower · <kbd>⌥4</kbd> faster · <kbd>⌥5</kbd> 1×</p>
+        <p><kbd>⌥Z</kbd> <kbd>⌥C</kbd> previous / next frame</p>
+        <p><kbd>⌥X</kbd> delete selected marks</p>
+        <p><kbd>⌥R</kbd> reverse direction</p>
+        <p><kbd>⌥Tab</kbd> / <kbd>⌥⇧Tab</kbd> next / previous video</p>
+        <p class="muted">Track hotkeys appear on the left of the timeline; digits can be assigned to less-used tracks.</p>
+        <h3>Right-hand playback</h3>
+        <p><kbd>L</kbd> forward; repeat to speed up · <kbd>J</kbd> reverse · <kbd>K</kbd> stop</p>
+        <p><kbd>↑</kbd> <kbd>↓</kbd> speed steps 0.1…16× · <kbd>6</kbd>…<kbd>9</kbd> 1.5 / 2 / 4 / 8× · <kbd>0</kbd> 1×</p>
+        <p><kbd>←</kbd> <kbd>→</kbd> seek 2 s · <kbd>Shift</kbd> 10 s · <kbd>⌘</kbd> 60 s</p>
+        <p><kbd>,</kbd> <kbd>.</kbd> or <kbd>⌥←</kbd> <kbd>⌥→</kbd> step one frame</p>
+        <p><kbd>Home</kbd> <kbd>End</kbd> beginning / end</p>
+        <p><kbd>PgUp</kbd> <kbd>PgDn</kbd> previous / next mark</p>
       </div>
       <div>
-        <h3>Разметка</h3>
-        <p>Держи клавишу дорожки (<kbd>F</kbd> <kbd>S</kbd> <kbd>D</kbd> …, редкие на цифрах) — пока держишь, пишется промежуток</p>
-        <p><kbd>Shift</kbd>+клавиша — защёлка: начало, ещё раз — конец</p>
-        <p>Клик по метке — выбрать и перейти к ней, <kbd>Del</kbd> — удалить</p>
-        <p><kbd>Shift</kbd>+тянуть по таймлайну — выделить рамкой · <kbd>⌘</kbd>+клик — добавить/убрать метку</p>
-        <p>клик по названию дорожки — все её метки в окне (<kbd>Shift</kbd> — во всём файле) · <kbd>⌘A</kbd> все метки в окне (<kbd>⌘⇧A</kbd> — во всём файле)</p>
-        <p>выделенные: <kbd>Del</kbd> / <kbd>⌥X</kbd> удалить разом · тянуть — сдвинуть все · <kbd>⌥⇧←→</kbd> на кадр · <kbd>Esc</kbd> снять</p>
-        <p>Тяни метку — сдвинуть, тяни её край — изменить длину (кадр виден в плеере)</p>
-        <p><kbd>⌥⇧←</kbd> <kbd>⌥⇧→</kbd> сдвиг выбранной метки на кадр · <kbd>{</kbd> <kbd>}</kbd> начало / конец метки в позицию курсора</p>
-        <p><kbd>⌘Z</kbd> отменить · <kbd>⌘⇧Z</kbd> вернуть</p>
-        <p><kbd>O</kbd> всё видео — OK · <kbd>U</kbd> — снять (брак всего видео — <kbd>X</kbd> в медиатеке)</p>
-        <p><kbd>N</kbd> заметка к видео, а если выбрана метка — подпись к ней · <kbd>I</kbd> участники и теги</p>
-        <h3>Приближение</h3>
-        <p><kbd>=</kbd> <kbd>-</kbd> ближе / дальше · <kbd>\</kbd> сброс</p>
-        <p>колесо / щипок — зум к курсору · тяни мышью — сдвиг</p>
-        <p><kbd>Ctrl</kbd>+стрелки — сдвиг кадра</p>
-        <p><kbd>[</kbd> <kbd>]</kbd> масштаб таймлайна</p>
-        <h3>Рисование</h3>
-        <p><kbd>P</kbd> рисовать на стоп-кадре (ставит паузу)</p>
-        <p>в режиме: <kbd>1</kbd>…<kbd>5</kbd> цвет · <kbd>[</kbd> <kbd>]</kbd> толщина · <kbd>⌘Z</kbd> отменить штрих</p>
-        <p><kbd>Enter</kbd> или <kbd>P</kbd> сохранить · <kbd>Esc</kbd> отменить</p>
-        <p><kbd>Esc</kbd> вне режимов — в медиатеку</p>
-        <h3>Участники и теги</h3>
-        <p>В медиатеке: <kbd>A</kbd> участники · <kbd>T</kbd> теги · <kbd>G</kbd> группировка · <kbd>⌘</kbd>/<kbd>Shift</kbd>+клик — несколько видео</p>
-        <p>В плеере: <kbd>I</kbd> — участники/теги; 📷 — аватар из кадра (сначала приблизь лицо)</p>
+        <h3>Annotations</h3>
+        <p>Hold a track key (<kbd>F</kbd> <kbd>S</kbd> <kbd>D</kbd> …) to record a time span.</p>
+        <p><kbd>Shift</kbd>+key latches the start; press again to end the mark.</p>
+        <p>Click a mark to select it and seek · <kbd>Del</kbd> deletes it.</p>
+        <p><kbd>Shift</kbd>-drag to select a region · <kbd>⌘</kbd>-click to add/remove a mark.</p>
+        <p>Click a track name to select its visible marks (<kbd>Shift</kbd>: entire video) · <kbd>⌘A</kbd> selects all visible marks (<kbd>⌘⇧A</kbd>: entire video).</p>
+        <p>Selection: <kbd>Del</kbd> / <kbd>⌥X</kbd> delete · drag to move · <kbd>⌥⇧←→</kbd> nudge one frame · <kbd>Esc</kbd> clear.</p>
+        <p>Drag a mark to move it; drag an edge to adjust its duration.</p>
+        <p><kbd>⌥⇧←</kbd> <kbd>⌥⇧→</kbd> nudge a frame · <kbd>{</kbd> <kbd>}</kbd> set the start / end to the playhead.</p>
+        <p><kbd>⌘Z</kbd> undo · <kbd>⌘⇧Z</kbd> redo</p>
+        <p><kbd>O</kbd> mark video OK · <kbd>U</kbd> clear status · <kbd>X</kbd> flag a defect in the library.</p>
+        <p><kbd>N</kbd> video note or caption for the selected mark · <kbd>I</kbd> participants and tags</p>
+        <h3>Zoom and framing</h3>
+        <p><kbd>=</kbd> <kbd>-</kbd> zoom in / out · <kbd>\</kbd> reset</p>
+        <p>Wheel / pinch to zoom at the cursor · drag to pan.</p>
+        <p><kbd>Ctrl</kbd>+arrows pan the frame · <kbd>[</kbd> <kbd>]</kbd> change timeline scale.</p>
+        <h3>Drawings</h3>
+        <p><kbd>P</kbd> pause and draw on the current frame.</p>
+        <p>While drawing: <kbd>1</kbd>…<kbd>5</kbd> color · <kbd>[</kbd> <kbd>]</kbd> width · <kbd>⌘Z</kbd> undo stroke.</p>
+        <p><kbd>Enter</kbd> or <kbd>P</kbd> save · <kbd>Esc</kbd> cancel.</p>
+        <p><kbd>Esc</kbd> outside a mode returns to the library.</p>
+        <h3>Participants and tags</h3>
+        <p>Library: <kbd>A</kbd> participants · <kbd>T</kbd> tags · <kbd>G</kbd> grouping · <kbd>⌘</kbd>/<kbd>Shift</kbd>-click for several videos.</p>
+        <p>Player: <kbd>I</kbd> participants/tags · 📷 uses the current frame and zoom for an avatar.</p>
       </div>
     </div>
-    <p class="muted">Всё сохраняется само в &lt;папка&gt;/_review/marks/…json, сводка — в _review/all.json</p>
+    <p class="muted">Changes save automatically in the review data directory. The merged main-timeline export is all.json.</p>
   </div>
 </div>
 
 <div id="settings" class="overlay hidden">
   <div class="panel">
-    <h2>Дорожки разметки</h2>
-    <p class="muted">Код дорожки (в файлах разметки) · клавиша (буква, цифра или alt+буква) → название и цвет. Сохраняется для всей медиатеки.</p>
+    <h2>Annotation tracks</h2>
+    <p class="muted">Track ID · hotkey (letter, digit, or alt+letter) → label and color. Saved for the entire library.</p>
     <div id="trackRows"></div>
-    <button id="addTrack">+ дорожка</button>
-    <button id="saveTracks" class="primary">Сохранить</button>
+    <button id="addTrack">+ track</button>
+    <button id="saveTracks" class="primary">Save</button>
   </div>
 </div>
 
 <div id="tagger" class="overlay hidden">
   <div class="panel tagger">
-    <div class="tabs"><button data-k="people" class="on">Участники</button><button data-k="tags">Теги</button><span class="grow"></span><span id="tgTarget" class="muted"></span></div>
+    <div class="tabs"><button data-k="people" class="on">Participants</button><button data-k="tags">Tags</button><span class="grow"></span><span id="tgTarget" class="muted"></span></div>
     <div id="tgChips" class="tgchips"></div>
     <input id="tgInput" spellcheck="false" autocomplete="off">
     <div id="tgSugg" class="sugg"></div>
-    <p class="muted small">Enter — добавить (новое имя создаётся само) · ↑↓ — выбор · Backspace в пустом поле — убрать последнее · Tab — участники/теги · Esc — закрыть<br>Тег с группой: «проект: Music video». Частичные отметки (2/5) — клик добавит всем выбранным.</p>
+    <p class="muted small">Enter: add (a new name creates an entry) · ↑↓: select · Backspace in an empty field: remove last · Tab: participants/tags · Esc: close<br>Grouped tag: “project: Music video”. A partial assignment (2/5) adds the entry to every selected video when clicked.</p>
   </div>
 </div>
 
 <div id="catalog" class="overlay hidden">
   <div class="panel catalog">
-    <div class="tabs"><button data-k="people" class="on">Участники</button><button data-k="tags">Теги</button><span class="grow"></span><input id="catSearch" placeholder="поиск" spellcheck="false"></div>
+    <div class="tabs"><button data-k="people" class="on">Participants</button><button data-k="tags">Tags</button><span class="grow"></span><input id="catSearch" placeholder="search" spellcheck="false"></div>
     <div id="catRows"></div>
-    <p class="muted small">Изменения сохраняются сразу. «Объединить» переносит все видео и имя (как псевдоним) в выбранную запись.</p>
+    <p class="muted small">Changes save immediately. Merge moves video links and the old name (as an alias) into the chosen entry.</p>
   </div>
 </div>
 

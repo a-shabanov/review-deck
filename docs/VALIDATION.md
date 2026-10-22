@@ -1,23 +1,25 @@
-# Проверки — 23 октября 2026
+# Validation — 23 October 2026
 
-## Серверный режим
+## Server mode
 
-Проверено на синтетическом трёхсекундном видео, без пользовательской медиатеки:
+The following checks used temporary synthetic media and did not touch a personal library:
 
-- Python 3.12 + Waitress 3.0.2: 14 интеграционных сценариев прошли, включая локальный режим без внешних Python-зависимостей. После обновления терминологии все 14 сценариев пройдены повторно.
-- Docker Compose, Linux ARM64: образ собрался; 13 интеграционных сценариев прошли; контейнер healthy до и после перезапуска. Эта проверка относится к первоначальной on-prem версии.
-- В контейнере подтверждены пользователь без root и read-only mount медиатеки.
-- Chrome: HTTP Basic, закреплённая медиатека, воспроизведение/перемотка, сохранение метки с подписью; ошибок JavaScript нет.
-- Проверка синтаксиса Python и JavaScript прошла.
+- Python 3.12 + Waitress 3.0.2: all 14 integration scenarios passed, including local mode without third-party Python packages. The 14 scenarios were repeated successfully after translating the interface and default track labels to English.
+- Docker Compose, Linux ARM64: the image built and 13 integration scenarios passed; the container was healthy before and after restart. This run covers the initial on-premises implementation.
+- The container ran as a non-root user with the source library mounted read-only.
+- Chrome: HTTP Basic authentication, fixed library selection, playback/seeking, and persistence of a captioned mark passed without JavaScript errors.
+- Python and JavaScript syntax checks passed.
 
-Сценарии покрывают авторизацию UI/API/видео, изоляцию путей и симлинков, HTTP Range/HEAD, обе ленты разметки, настройки, каталог, рисунки, экспорт, метаданные, превью/прокси ffmpeg, параллельные записи, перезапуск, отказ при небезопасной конфигурации и проверку origin/размера запросов.
+The scenarios cover authentication for pages/API/media, path and symlink confinement, HTTP Range/HEAD, both timelines, configuration, catalog, drawings, export, ffmpeg metadata/previews/proxies, parallel writes, restart persistence, startup guards, request origin, and request-size limits.
 
-## Интерфейс и скриншоты README
+## English interface and README screenshots
 
-После обновления текстов сняты настоящие скриншоты медиатеки, основной разметки и правок монтажа. Демонстрационная библиотека создана отдельно из [предложенного видео](https://www.youtube.com/watch?v=FyS5dAywkEo); участники, теги, статусы и разметка иллюстративные. Видеофайлы и временные данные не включены в репозиторий.
+Four screenshots were captured from the running application using a separate temporary demo library with [LISA — SaWaDiKa](https://www.youtube.com/watch?v=FyS5dAywkEo) and [ILLIT — It’s Me](https://www.youtube.com/watch?v=bMhDJ0S0OBA). Participants, tags, statuses, and annotations are illustrative. The videos and temporary library data are not included in the repository.
 
-В Chrome проверены загрузка всех превью, воспроизведение и переход к выбранному кадру, переключение таймлайнов и панель участников. Ошибок JavaScript и сетевых запросов нет. Скриншоты просмотрены вручную, локальные ссылки на изображения в README проверены. Прежняя иллюстрация заменена.
+The browser check verified all thumbnail images loaded, both source videos played and sought to the requested frames, the annotation/review timelines switched correctly, and the participant panel and keyboard help opened. All demo labels and annotations were checked for English text. Player controls fit the captured viewport; JavaScript and network error checks passed. The apostrophe in the second source filename is preserved and its preview loads correctly after URL escaping was fixed.
 
-![Разметка в плеере](screenshots/timeline.png)
+The screenshots were visually inspected, and every image link in README was checked against an existing PNG file. The former illustration was replaced.
 
-На целевой инфраструктуре не проверены DNS, TLS-сертификаты, прокси, права NAS, backup/restore и нагрузка больших команд. Развёртывание на целевом сервере не выполнялось. Основные ограничения описаны в [руководстве](ON_PREMISES.md).
+![English annotations on the second video](screenshots/annotations-illit.png)
+
+Target-server DNS, TLS certificates, reverse proxy, NAS permissions, backup/restore, and large-team load have not been verified. The app has not been deployed to the target server. See the [deployment guide](ON_PREMISES.md) for the supported operating model and its limits.

@@ -1,4 +1,4 @@
-// speech layer: auto_speech / auto_expr rows and their captions follow the «Речь» button, independent of «Служебные»
+// speech layer: auto_speech / auto_expr rows and their captions follow the Speech button, independent of Auxiliary
 import puppeteer from 'puppeteer-core';
 const [url, out] = process.argv.slice(2); const sleep = ms => new Promise(r => setTimeout(r, ms));
 const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', defaultViewport: { width: 1600, height: 1000 } });

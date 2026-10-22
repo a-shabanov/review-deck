@@ -10,7 +10,7 @@ const n = K => p.evaluate(K => (P.marks.tracks[K]?.spans || []).length, K);
 const hold = async (code, ms = 400, mod) => { if (mod) await p.keyboard.down(mod); await p.keyboard.down(code); await sleep(ms); await p.keyboard.up(code); if (mod) await p.keyboard.up(mod); await sleep(100); };
 await p.evaluate(() => { seekTo(60); play(); }); await sleep(300);
 await hold('KeyS'); await hold('KeyX'); await hold('KeyB'); await hold('KeyR'); await hold('KeyG');
-console.log("S->' scene", await n("'"), '| X->B брак', await n('B'), '| B->/ detail', await n('/'), '| R->H hands', await n('H'), '| G->; group', await n(';'));
+console.log("S->' scene", await n("'"), '| X->B defect', await n('B'), '| B->/ detail', await n('/'), '| R->H hands', await n('H'), '| G->; group', await n(';'));
 await hold('Digit4'); console.log('4 -> ` props', await n('`'), '| T expression', await n('T'));
 await p.keyboard.down('Digit3'); await sleep(200); await p.keyboard.press('Space'); await sleep(200); await p.keyboard.up('Digit3'); await sleep(100);
 console.log('3 held + Space -> G movement', await n('G'), '| playing', await p.evaluate(() => P.playing), '| held left', await p.evaluate(() => Object.keys(P.held).length));
@@ -26,6 +26,6 @@ const alt = async c => { await p.keyboard.down('Alt'); await p.keyboard.press(c)
 const r0 = await p.evaluate(() => P.rate); await alt('Digit4'); const r1 = await p.evaluate(() => P.rate); await alt('Digit3'); await alt('Digit3'); const r2 = await p.evaluate(() => P.rate); await alt('Digit5');
 console.log('rate', r0, '⌥4->', r1, '⌥3⌥3->', r2, '⌥5->', await p.evaluate(() => P.rate));
 await p.evaluate(() => { P.sel = { K: "'", i: 0 }; P.msel = new Set([P.marks.tracks["'"].spans[0]]); }); await p.keyboard.down('Alt'); await p.keyboard.press('KeyX'); await p.keyboard.up('Alt'); await sleep(100);
-console.log('⌥X deleted selection -> scene', await n("'"), '| брак still', await n('B'));
+console.log('⌥X deleted selection -> scene', await n("'"), '| defect still', await n('B'));
 console.log('rel before ⌥Tab', await p.evaluate(() => P.rel)); await p.evaluate(() => { P.tlWin = 30; seekTo(62); }); await sleep(500);
 await p.screenshot({ path: out }); console.log('errors', errs); await b.close();

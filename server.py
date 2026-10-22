@@ -33,14 +33,14 @@ write_lock = threading.RLock()
 log = logging.getLogger('review-deck')
 VIDEO_EXT = {'.mp4', '.m4v', '.mov', '.mkv', '.webm', '.avi', '.wmv', '.ts', '.flv', '.mpg', '.mpeg'}
 DEFAULT_TRACKS = [
-    {'key': 'F', 'label': 'Сцена', 'color': '#ff4d6d'},
-    {'key': 'C', 'label': 'Крупный план', 'color': '#4dabff'},
-    {'key': 'V', 'label': 'Участник', 'color': '#ffd23f'},
-    {'key': 'B', 'label': 'брак', 'color': '#9b5de5'},
-    {'key': 'G', 'label': 'Движение', 'color': '#3ddc97'},
-    {'key': 'T', 'label': 'Переход', 'color': '#ff9f1c'},
-    {'key': 'Q', 'label': 'Звук', 'color': '#f15bb5'},
-    {'key': 'E', 'label': 'Заметка', 'color': '#00f5d4'},
+    {'key': 'F', 'label': 'Scene', 'color': '#ff4d6d'},
+    {'key': 'C', 'label': 'Close-up', 'color': '#4dabff'},
+    {'key': 'V', 'label': 'Participant', 'color': '#ffd23f'},
+    {'key': 'B', 'label': 'Defect', 'color': '#9b5de5'},
+    {'key': 'G', 'label': 'Movement', 'color': '#3ddc97'},
+    {'key': 'T', 'label': 'Transition', 'color': '#ff9f1c'},
+    {'key': 'Q', 'label': 'Audio', 'color': '#f15bb5'},
+    {'key': 'E', 'label': 'Note', 'color': '#00f5d4'},
 ]
 
 state = {'root': None}
@@ -202,14 +202,14 @@ def scan():
     return [{'folder': k, 'videos': v} for k, v in sorted(folders.items(), key=lambda kv: (kv[0] != '.', kv[0].lower()))]
 
 REVIEW_TRACKS = [   # the 'review' timeline: notes on a finished cut, left hand (N on a mark = its caption)
-    {'key': 'Q', 'label': 'неверный фрагмент', 'color': '#ff4d4d', 'group': 'правки'},
-    {'key': 'W', 'label': 'кадр / позиционирование', 'color': '#ff9f40', 'group': 'правки'},
-    {'key': 'E', 'label': 'подписи / текст', 'color': '#ffd84d', 'group': 'правки'},
-    {'key': 'R', 'label': 'звук', 'color': '#4dd2ff', 'group': 'правки'},
-    {'key': 'A', 'label': 'содержание / логика', 'color': '#b36bff', 'group': 'правки'},
-    {'key': 'S', 'label': 'тайминг / монтаж', 'color': '#4d7dff', 'group': 'правки'},
-    {'key': 'D', 'label': 'хорошо — оставить', 'color': '#4dff88', 'group': 'оценка'},
-    {'key': 'F', 'label': 'другое', 'color': '#bbbbbb', 'group': 'оценка'}]
+    {'key': 'Q', 'label': 'Wrong segment', 'color': '#ff4d4d', 'group': 'Review'},
+    {'key': 'W', 'label': 'Framing / position', 'color': '#ff9f40', 'group': 'Review'},
+    {'key': 'E', 'label': 'Captions / text', 'color': '#ffd84d', 'group': 'Review'},
+    {'key': 'R', 'label': 'Audio', 'color': '#4dd2ff', 'group': 'Review'},
+    {'key': 'A', 'label': 'Content / logic', 'color': '#b36bff', 'group': 'Review'},
+    {'key': 'S', 'label': 'Timing / edit', 'color': '#4d7dff', 'group': 'Review'},
+    {'key': 'D', 'label': 'Keep this', 'color': '#4dff88', 'group': 'Assessment'},
+    {'key': 'F', 'label': 'Other', 'color': '#bbbbbb', 'group': 'Assessment'}]
 def get_config(tl=''):
     try: c = json.load(open(rdir('config' + ('@' + tl if tl else '') + '.json')))
     except Exception: c = {}
@@ -249,13 +249,13 @@ def new_entry(c, kind, name, group=''):
     return i
 
 def resolve_entry(c, o):
-    """op target: an existing id, or a name that is found (name or alias) or created; 'группа: имя' sets a tag group"""
+    """op target: an existing id, or a name that is found (name or alias) or created; 'group: name' sets a tag group"""
     if o.get('id'):
-        if o['id'] not in c[o['kind']]: raise ValueError('нет такой записи')
+        if o['id'] not in c[o['kind']]: raise ValueError('Entry not found')
         return o['id']
     name, group = o['name'].strip(), o.get('group', '')
     if o['kind'] == 'tags' and ':' in name and not group: group, name = [x.strip() for x in name.split(':', 1)]
-    if not name: raise ValueError('пустое имя')
+    if not name: raise ValueError('Name cannot be empty')
     return find_entry(c, o['kind'], name) or new_entry(c, o['kind'], name, group)
 
 def apply_ops(ops):
@@ -274,7 +274,7 @@ def apply_ops(ops):
                 e = c[kind][o['id']]; f = o['fields']
                 if 'name' in f:
                     other = find_entry(c, kind, f['name'])
-                    if other and other != o['id']: raise ValueError(f"«{f['name']}» уже есть — объедините записи")
+                    if other and other != o['id']: raise ValueError(f"An entry named {f['name']} already exists; merge the entries")
                     e['name'] = ' '.join(f['name'].split())
                 if 'aliases' in f: e['aliases'] = [' '.join(a.split()) for a in f['aliases'] if a.strip()]
                 for k in ('group', 'note', 'avatar'):
@@ -282,7 +282,7 @@ def apply_ops(ops):
                 ids.append(o['id'])
             elif op == 'merge':            # 'id' disappears into 'into': its videos, name (as an alias) and aliases move over
                 a, b = o['id'], o['into']
-                if a == b or a not in c[kind] or b not in c[kind]: raise ValueError('нечего объединять')
+                if a == b or a not in c[kind] or b not in c[kind]: raise ValueError('Nothing to merge')
                 ea, eb = c[kind].pop(a), c[kind][b]
                 if kind == 'people':
                     eb['aliases'] = list(dict.fromkeys(eb.get('aliases', []) + [ea['name']] + ea.get('aliases', [])))
@@ -438,7 +438,7 @@ class Request:
             if u.path == '/api/root':
                 if ROOT_LOCKED: return self.send_json({'error': 'library is managed by the administrator'}, 403)
                 p = os.path.realpath(os.path.expanduser(self.body()['path']))
-                if not os.path.isdir(p): return self.send_json({'error': 'нет такой папки'}, 400)
+                if not os.path.isdir(p): return self.send_json({'error': 'Directory not found'}, 400)
                 set_root(p); return self.send_json({'root': p})
             if root() is None: return self.send_json({'error': 'no library'}, 400)
             if u.path == '/api/marks':
